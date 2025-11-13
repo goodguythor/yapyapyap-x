@@ -1,0 +1,259 @@
+document.addEventListener("DOMContentLoaded", () => {
+    const username = prompt("Enter your username:");
+    const socket = new WebSocket(`ws://localhost:8080/yapyapyap/chat/${username}`);
+    const chatContainer = document.querySelector(".chat");
+    const inputBox = document.querySelector(".text-box");
+    const sendButton = document.querySelector(".send-button");
+    const contactNameDisplay = document.querySelector(".contact-name");
+    const contactList = document.querySelector(".contact-list");
+    const addButton = document.querySelector(".add-button");
+    const contactBox = document.querySelector(".contact-box");
+    const logoutButton = document.querySelector(".logout-button");
+    const deleteButton = document.querySelector(".delete-button");
+
+
+    let recipient = "";
+    let fetchedMessages = [];
+
+    fetch(`http://localhost:4000/api/contact?username=${username}`)
+        .then(res => res.json())
+        .then(data => {
+            contactList.innerHTML = ""; // Clear existing buttons
+            // console.log("Contacts fetched:", data[0].username);
+            data.forEach(contact => {
+                createContactButton(contact.username);
+            });
+        })
+        .catch(err => console.error("Failed to fetch contacts:", err));
+
+    setInterval(() => {
+        if (recipient && fetchedMessages.length > 0) {
+            const lastMessage = fetchedMessages[fetchedMessages.length - 1];
+            const lastTimestamp = lastMessage ? lastMessage.timestamp : "";
+            fetchNewChat(username, recipient, lastTimestamp);
+        }
+    }, 3000);
+
+    socket.onopen = () => {
+        console.log("Connected to WebSocket as", username);
+        const initPayload = {
+            sender: username,
+            msg: `${username}`
+        };
+        socket.send(JSON.stringify(initPayload));
+    };
+
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        appendMessage(data.msg);
+    };
+
+    socket.onclose = () => {
+        console.log("Disconnected from WebSocket");
+    };
+
+    socket.onerror = (err) => {
+        console.error("WebSocket error:", err);
+    };
+
+    sendButton.addEventListener("click", () => {
+        const message = inputBox.value.trim();
+        if (message !== "") {
+            const payload = {
+                sender: username,
+                msg: message,
+                target: recipient
+            };
+            // console.log("Sending message:", payload);
+            socket.send(JSON.stringify(payload));
+            appendMessage(message);
+            inputBox.value = "";
+        }
+        // console.log(message);
+    });
+
+    logoutButton.addEventListener("click", () => {
+        if (confirm("Are you sure you want to log out?")) {
+            socket.close();
+            window.location.href = "./login.html"; // Redirect to login page
+        }
+    });
+
+    addButton.addEventListener("click", () => {
+        const newContact = contactBox.value.trim();
+        if (newContact !== "") {
+            fetch(`http://localhost:4000/api/contact`, {
+                method: "POST",
+                body: JSON.stringify({
+                    username: username,
+                    contact: newContact
+                }),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error("Failed to add contact");
+                }
+                return res.json();
+            })
+            .then(data => {
+                console.log("Contact added:", data);
+                createContactButton(newContact);
+                contactBox.value = ""; // Clear input box   
+            })
+            .catch(err => {
+                console.error("Error adding contact:", err);
+                alert("Failed to add contact. Please try again.");
+            }); 
+        } else {
+            alert("Contact name cannot be empty.");
+        }
+    });
+
+    deleteButton.addEventListener("click", () => {
+        if (recipient === "") {
+            alert("Please select a contact to delete.");
+            return;
+        }   
+        if (confirm(`Are you sure you want to delete the contact "${recipient}"?`)) {
+            fetch(`http://localhost:4000/api/contact`, {
+                method: "DELETE",
+                body: JSON.stringify({
+                    username: username,
+                    contact: recipient
+                }),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error("Failed to delete contact");
+                }
+                return res.json();
+            })
+            .then(data => {
+                console.log("Contact deleted:", data);
+                const contactButton = [...document.querySelectorAll('.contact-button')].find(button => button.textContent.includes(recipient));
+                if (contactButton) {
+                    contactList.removeChild(contactButton);
+                }
+                recipient = "";
+                contactNameDisplay.textContent = "yaPyaPyaP";
+                chatContainer.innerHTML = "";
+            })
+            .catch(err => {
+                console.error("Error deleting contact:", err);
+                alert("Failed to delete contact. Please try again.");
+            });
+        }
+    }
+);
+
+    function createContactButton(contactName) {
+        const button = document.createElement("button");
+        button.textContent = contactName;
+        button.classList.add("contact-button");
+        button.addEventListener("click", () => {
+            recipient = contactName;
+            contactNameDisplay.textContent = recipient;
+            chatContainer.innerHTML = "";
+            fetchChatHistory(username, recipient);
+        });
+        contactList.appendChild(button);
+    }
+
+    function appendMessage(message) {
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("sender");
+        msgDiv.innerHTML = `
+            <div class="name">You</div>
+            <hr class="name-line">
+            <div class="message">${message}</div>
+        `;
+
+        chatContainer.appendChild(msgDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function appendReceivedMessage(message) {
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("recipient");
+        msgDiv.innerHTML = `
+            <div class="name">${recipient}</div>
+            <hr class="name-line">
+            <div class="message">${message}</div>
+        `;
+        chatContainer.appendChild(msgDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function fetchChatHistory(sender, target) {
+        fetchedMessages = [];
+        const msgSent = fetch(`http://localhost:4000/api/chat?sender=${sender}&target=${target}`)
+            .then(res => res.json())
+            .then(data => {
+                chatContainer.innerHTML = "";
+                data.forEach(msgObj => {
+                    fetchedMessages.push({...msgObj, sent: true});
+                });
+            })
+            .catch(err => console.error("Failed to fetch chat:", err));
+        const msgRec = fetch(`http://localhost:4000/api/chat?sender=${target}&target=${sender}`)
+            .then(res => res.json())
+            .then(data => {
+                chatContainer.innerHTML = "";
+                data.forEach(msgObj => {
+                    fetchedMessages.push({...msgObj, sent: false});
+                });
+            })
+            .catch(err => console.error("Failed to fetch chat:", err));
+        Promise.all([msgSent, msgRec]).then(() => {
+            fetchedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            fetchedMessages.forEach(msgObj => {
+                // console.log(msgObj);
+                if(msgObj.sent) {
+                    appendMessage(msgObj.message);
+                } else {
+                    appendReceivedMessage(msgObj.message);
+                }
+            });
+        });
+    }
+
+    function fetchNewChat(sender, target, last) {
+        let newMessages = [];
+        const msgSent = fetch(`http://localhost:4000/api/chat?sender=${sender}&target=${target}&timestamp=${last}`)
+            .then(res => res.json())
+            .then(data => {
+                // chatContainer.innerHTML = "";
+                data.forEach(msgObj => {
+                    newMessages.push({...msgObj, sent: true});
+                });
+            })
+            .catch(err => console.error("Failed to fetch chat:", err));
+        const msgRec = fetch(`http://localhost:4000/api/chat?sender=${target}&target=${sender}&timestamp=${last}`)
+            .then(res => res.json())
+            .then(data => {
+                // chatContainer.innerHTML = "";
+                data.forEach(msgObj => {
+                    newMessages.push({...msgObj, sent: false});
+                });
+            })
+            .catch(err => console.error("Failed to fetch chat:", err));
+        Promise.all([msgSent, msgRec]).then(() => {
+            newMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            newMessages.forEach(msgObj => {
+                console.log(msgObj);
+                fetchedMessages.push(msgObj);
+                if(msgObj.sent) {
+                    appendMessage(msgObj.message);
+                } else {
+                    appendReceivedMessage(msgObj.message);
+                }
+            });
+        });
+    }
+});
