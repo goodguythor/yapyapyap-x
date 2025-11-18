@@ -49,8 +49,7 @@ const server = http.createServer(async (req, res) => {
             let senderId = null, targetId = null;
 
             if (!sender || !target) {
-                res.writeHead(400);
-                return res.end(JSON.stringify({ error: "Username not found" }));
+                return { senderId: null, targetId: null };
             }
 
             const result = await db.query(
@@ -78,7 +77,7 @@ const server = http.createServer(async (req, res) => {
 
             try {
                 const result = await db.query(
-                    `select message, timestamp 
+                    `select message_id, message, timestamp 
                     from messages
                     where ((sender_id = $1 and recipient_id = $2)
                     or (sender_id = $2 and recipient_id = $1))
@@ -96,11 +95,17 @@ const server = http.createServer(async (req, res) => {
         }
         else if (method == 'POST') {
             const message = parsedUrl.searchParams.get('message');
+
+            if (!message) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "Message not found" }));
+            }
+
             const { senderId, targetId } = await getUserId(sender, target);
 
             if (!senderId || !targetId) {
                 res.writeHead(400);
-                return res.end(JSON.stringify({ error: "User ID not found" }));
+                return res.end(JSON.stringify({ error: "User not found" }));
             }
 
             try {
@@ -119,9 +124,15 @@ const server = http.createServer(async (req, res) => {
         }
         else if (method == 'PATCH') {
             const messageId = parsedUrl.searchParams.get('message_id');
+
+            if (!messageId) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "Message ID not found" }));
+            }
+
             const { senderId, targetId } = await getUserId(sender, target);
 
-            if (!senderId) {
+            if (!senderId || !targetId) {
                 res.writeHead(400);
                 return res.end(JSON.stringify({ error: "User not found" }));
             }
