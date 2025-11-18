@@ -2,6 +2,9 @@ const http = require('http');
 const { Client } = require('pg');
 require('dotenv').config();
 
+const port = process.env.PORT;
+const host = process.env.HOST;
+
 let db = null;
 
 async function connectDB() {
@@ -26,11 +29,11 @@ async function connectDB() {
 
 const server = http.createServer(async (req, res) => {
     const { method, url } = req;
-    const parsedUrl = new URL(url, `http://${process.env.HOST}/api`);
+    const parsedUrl = new URL(url, `http://${host}:${port}`);
     const pathname = parsedUrl.pathname;
 
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     if (method == 'OPTIONS') {
@@ -38,18 +41,16 @@ const server = http.createServer(async (req, res) => {
         res.end();
         return;
     }
-    else if (pathname == "/chat") {
+    else if (pathname == "/api/chat") {
         const sender = parsedUrl.searchParams.get('sender');
         const target = parsedUrl.searchParams.get('target');
-        const message = parsedUrl.searchParams.get('message');
-        const messageId = parsedUrl.searchParams.get('message_id');
 
         async function getUserId(sender, target) {
             let senderId = null, targetId = null;
 
-            if (!senderId || !targetId) {
+            if (!sender || !target) {
                 res.writeHead(400);
-                return res.end(JSON.stringify({ error: "User not found" }));
+                return res.end(JSON.stringify({ error: "Username not found" }));
             }
 
             const result = await db.query(
@@ -93,11 +94,12 @@ const server = http.createServer(async (req, res) => {
             }
         }
         else if (method == 'POST') {
+            const message = parsedUrl.searchParams.get('message');
             const { senderId, targetId } = await getUserId(sender, target);
 
             if (!senderId || !targetId) {
                 res.writeHead(400);
-                return res.end(JSON.stringify({ error: "User not found" }));
+                return res.end(JSON.stringify({ error: "User ID not found" }));
             }
 
             try {
@@ -107,15 +109,16 @@ const server = http.createServer(async (req, res) => {
                     [message, senderId, targetId]
                 );
                 res.writeHead(201);
-                res.end(JSON.stringify({ status: "insert successful" }));
+                return res.end(JSON.stringify({ status: "insert successful" }));
             }
             catch (err) {
                 res.writeHead(500);
                 return res.end(JSON.stringify({ error: err }));
             }
         }
-        else if (method == 'DELETE') {
-            const { senderId } = await getUserId(sender, target);
+        else if (method == 'PATCH') {
+            const messageId = parsedUrl.searchParams.get('message_id');
+            const { senderId, targetId } = await getUserId(sender, target);
 
             if (!senderId) {
                 res.writeHead(400);
@@ -124,14 +127,16 @@ const server = http.createServer(async (req, res) => {
 
             try {
                 await db.query(
-                    `delete from messages
+                    `update messages
+                    set deleted = true
                     where (message_id = $1)
-                    and (sender_id = $2)`,
-                    [messageId, senderId]
+                    and (sender_id = $2)
+                    and (recipient_id = $3)`,
+                    [messageId, senderId, targetId]
                 );
 
                 res.writeHead(200);
-                res.end(JSON.stringify({ status: "delete successful" }));
+                return res.end(JSON.stringify({ status: "delete successful" }));
             }
             catch (err) {
                 res.writeHead(500);
@@ -139,11 +144,11 @@ const server = http.createServer(async (req, res) => {
             }
         }
         else {
-            res.writeHead(405, { 'Allow': 'GET' });
+            res.writeHead(405, { 'Allow': 'GET, POST, PATCH' });
             return res.end(JSON.stringify({ error: 'Method not allowed' }));
         }
     }
-    else if (pathname == "/contact") {
+    else if (pathname == "/api/contact") {
         if (method == 'GET') {
 
         }
@@ -154,18 +159,18 @@ const server = http.createServer(async (req, res) => {
 
         }
         else {
-            res.writeHead(405, { 'Allow': 'GET' });
+            res.writeHead(405, { 'Allow': 'GET, POST, DELETE' });
             return res.end(JSON.stringify({ error: 'Method not allowed' }));
         }
     }
     res.writeHead(404, { 'content-type': 'text/plain' });
-    res.end("This page doesn't exist");
+    res.end("yapyapyap");
 });
 
 async function startServer() {
     db = await connectDB();
     server.listen(port, host, () => {
-        console.log(`Server running at http://${process.env.HOST}:${process.env.PORT}`);
+        console.log(`Server running at http://${host}:${port}`);
     });
 }
 
