@@ -115,7 +115,7 @@ const server = http.createServer(async (req, res) => {
                     [message, senderId, targetId]
                 );
                 res.writeHead(201);
-                return res.end(JSON.stringify({ status: "insert successful" }));
+                return res.end(JSON.stringify({ status: "Insert successful" }));
             }
             catch (err) {
                 res.writeHead(500);
@@ -148,7 +148,7 @@ const server = http.createServer(async (req, res) => {
                 );
 
                 res.writeHead(200);
-                return res.end(JSON.stringify({ status: "delete successful" }));
+                return res.end(JSON.stringify({ status: "Delete successful" }));
             }
             catch (err) {
                 res.writeHead(500);
