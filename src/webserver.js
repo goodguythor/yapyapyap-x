@@ -80,8 +80,9 @@ const server = http.createServer(async (req, res) => {
                 const result = await db.query(
                     `select message, timestamp 
                     from messages
-                    where (sender_id = $1 and recipient_id = $2) 
-                    or (sender_id = $2 and recipient_id = $1)
+                    where ((sender_id = $1 and recipient_id = $2)
+                    or (sender_id = $2 and recipient_id = $1))
+                    and deleted = false
                     order by timestamp ASC`,
                     [senderId, targetId]
                 );
