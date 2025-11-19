@@ -5,7 +5,33 @@ require('dotenv').config();
 const port = process.env.PORT;
 const host = process.env.HOST;
 
+// TODO:
+// - Save sender_id on FE so we don't fetch sender_id on each query
+// - Implement contact api
+
 let db = null;
+
+function getRequestBody(req) {
+    return new Promise((resolve, reject) => {
+        let body = "";
+
+        req.on("data", chunk => {
+            body += chunk.toString();
+        });
+
+        req.on("end", () => {
+            try {
+                const json = JSON.parse(body);
+                resolve(json);
+            }
+            catch (err) {
+                reject(err);
+            }
+        });
+
+        req.on("error", reject);
+    });
+}
 
 async function connectDB() {
     const client = new Client({
@@ -40,6 +66,68 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(204);
         res.end();
         return;
+    }
+    else if (pathname == "/api/login") {
+        if (method == 'POST') {
+            try {
+                const body = await getRequestBody(req);
+                const { username, password } = body;
+
+                if (!username || !password) {
+                    res.writeHead(400, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({ error: "Missing username or password" }));
+                }
+
+                if (password.length < 8) {
+                    res.writeHead(400, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({ error: "Password must have at least 8 characters" }));
+                }
+
+                if (password.length > 100) {
+                    res.writeHead(400, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({ error: "Password must have at most 100 characters" }));
+                }
+
+                const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-={}\[\]|:;"'<>,.?/~`]).{8,100}$/;
+
+                if (!passwordRegex.test(password)) {
+                    res.writeHead(400, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({
+                        error: "Password must include uppercase, lowercase, number, and symbol"
+                    }));
+                }
+
+                try {
+                    const result = await db.query(
+                        `select user_id
+                        from users
+                        where username = $1
+                        and password = $2`,
+                        [username, password]
+                    );
+
+                    if (result.rows.length === 0) {
+                        res.writeHead(401, { "Content-Type": "application/json" });
+                        return res.end(JSON.stringify({ error: "Invalid username or password" }));
+                    }
+
+                    res.writeHead(200);
+                    return res.end(JSON.stringify(result.rows[0].user_id));
+                }
+                catch (err) {
+                    res.writeHead(500);
+                    return res.end(JSON.stringify({ error: "Login failed" }));
+                }
+            }
+            catch (err) {
+                res.writeHead(400, { "Content-Type": "application/json" });
+                return res.end(JSON.stringify({ error: "Invalid JSON" }));
+            }
+        }
+        else {
+            res.writeHead(405, { 'Allow': 'POST' });
+            return res.end(JSON.stringify({ error: 'Method not allowed' }));
+        }
     }
     else if (pathname == "/api/chat") {
         const sender = parsedUrl.searchParams.get('sender');
