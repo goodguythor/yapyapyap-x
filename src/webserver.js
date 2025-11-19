@@ -62,6 +62,26 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+    async function getUserId(target) {
+        let targetId = null;
+
+        if (!target) {
+            return targetId;
+        }
+
+        const result = await db.query(
+            `select username, user_id 
+            from users
+            where username = $1`,
+            [target]
+        );
+
+        const row = result.rows[0];
+        if (row.username === target) targetId = row.user_id;
+
+        return targetId;
+    }
+
     if (method == 'OPTIONS') {
         res.writeHead(204);
         res.end();
@@ -130,35 +150,12 @@ const server = http.createServer(async (req, res) => {
         }
     }
     else if (pathname == "/api/chat") {
-        const sender = parsedUrl.searchParams.get('sender');
-        const target = parsedUrl.searchParams.get('target');
-
-        async function getUserId(sender, target) {
-            let senderId = null, targetId = null;
-
-            if (!sender || !target) {
-                return { senderId: null, targetId: null };
-            }
-
-            const result = await db.query(
-                `select username, user_id 
-                from users
-                where username = $1 or username = $2`,
-                [sender, target]
-            );
-
-            for (const row of result.rows) {
-                if (row.username === sender) senderId = row.user_id;
-                else if (row.username === target) targetId = row.user_id;
-            }
-
-            return { senderId, targetId };
-        }
-
         if (method == 'GET') {
-            const { senderId, targetId } = await getUserId(sender, target);
+            const body = await getRequestBody(req);
+            const { senderId, target } = body;
+            const targetId = await getUserId(target);
 
-            if (!senderId || !targetId) {
+            if (!targetId) {
                 res.writeHead(400);
                 return res.end(JSON.stringify({ error: "User not found" }));
             }
@@ -182,14 +179,15 @@ const server = http.createServer(async (req, res) => {
             }
         }
         else if (method == 'POST') {
-            const message = parsedUrl.searchParams.get('message');
+            const body = await getRequestBody(req);
+            const { senderId, target, message } = body;
 
             if (!message) {
                 res.writeHead(400);
                 return res.end(JSON.stringify({ error: "Message not found" }));
             }
 
-            const { senderId, targetId } = await getUserId(sender, target);
+            const targetId = await getUserId(target);
 
             if (!senderId || !targetId) {
                 res.writeHead(400);
@@ -211,14 +209,15 @@ const server = http.createServer(async (req, res) => {
             }
         }
         else if (method == 'PATCH') {
-            const messageId = parsedUrl.searchParams.get('message_id');
+            const body = await getRequestBody(req);
+            const { senderId, target, messageId } = body;
 
             if (!messageId) {
                 res.writeHead(400);
                 return res.end(JSON.stringify({ error: "Message ID not found" }));
             }
 
-            const { senderId, targetId } = await getUserId(sender, target);
+            const targetId = await getUserId(target);
 
             if (!senderId || !targetId) {
                 res.writeHead(400);
