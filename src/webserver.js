@@ -6,8 +6,6 @@ const port = process.env.PORT;
 const host = process.env.HOST;
 
 // TODO:
-// - Save sender_id on FE so we don't fetch sender_id on each query
-// - Implement contact api
 
 let db = null;
 
@@ -153,9 +151,15 @@ const server = http.createServer(async (req, res) => {
         if (method == 'GET') {
             const body = await getRequestBody(req);
             const { senderId, target } = body;
+
+            if (!target) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "Target username is missing" }));
+            }
+
             const targetId = await getUserId(target);
 
-            if (!targetId) {
+            if (!senderId || !targetId) {
                 res.writeHead(400);
                 return res.end(JSON.stringify({ error: "User not found" }));
             }
@@ -212,6 +216,12 @@ const server = http.createServer(async (req, res) => {
             const body = await getRequestBody(req);
             const { senderId, target, messageId } = body;
 
+            if (!target) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "Target username is missing" }));
+            }
+
+
             if (!messageId) {
                 res.writeHead(400);
                 return res.end(JSON.stringify({ error: "Message ID not found" }));
@@ -249,16 +259,97 @@ const server = http.createServer(async (req, res) => {
     }
     else if (pathname == "/api/contact") {
         if (method == 'GET') {
+            const body = await getRequestBody(req);
+            const { userId } = body;
 
+            if (!userId) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "User not found" }));
+            }
+
+            try {
+                const result = await db.query(
+                    `select u.username
+                    from users as u
+                    join contacts as c
+                    on c.contact_id = u.user_id
+                    where c.user_id = $1
+                    and deleted = false`,
+                    [userId]
+                );
+                res.writeHead(200, { 'content-type': 'application/json' });
+                return res.end(JSON.stringify(result.rows));
+            }
+            catch (err) {
+                res.writeHead(500);
+                return res.end(JSON.stringify({ error: err }));
+            }
         }
         else if (method == 'POST') {
+            const body = await getRequestBody(req);
+            const { userId, target } = body;
 
+            if (!target) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "Target username is missing" }));
+            }
+
+            const targetId = await getUserId(target);
+
+            if (!userId || !targetId) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "User not found" }));
+            }
+
+            try {
+                await db.query(
+                    `insert into contacts (user_id, contact_id) 
+                    values ($1, $2)`,
+                    [userId, targetId]
+                );
+                res.writeHead(201);
+                return res.end(JSON.stringify({ status: "Insert successful" }));
+            }
+            catch (err) {
+                res.writeHead(500);
+                return res.end(JSON.stringify({ error: err }));
+            }
         }
-        else if (method == 'DELETE') {
+        else if (method == 'PATCH') {
+            const body = await getRequestBody(req);
+            const { userId, target } = body;
 
+            if (!target) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "Target username is missing" }));
+            }
+
+            const targetId = await getUserId(target);
+
+            if (!userId || !targetId) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "User not found" }));
+            }
+
+            try {
+                await db.query(
+                    `update contacts
+                    set deleted = true
+                    where (user_id = $1)
+                    and (contact_id = $2)`,
+                    [userId, targetId]
+                );
+
+                res.writeHead(200);
+                return res.end(JSON.stringify({ status: "Delete successful" }));
+            }
+            catch (err) {
+                res.writeHead(500);
+                return res.end(JSON.stringify({ error: err }));
+            }
         }
         else {
-            res.writeHead(405, { 'Allow': 'GET, POST, DELETE' });
+            res.writeHead(405, { 'Allow': 'GET, POST, PATCH' });
             return res.end(JSON.stringify({ error: 'Method not allowed' }));
         }
     }
