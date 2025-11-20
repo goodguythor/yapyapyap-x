@@ -87,7 +87,7 @@ const server = http.createServer(async (req, res) => {
         res.end();
         return;
     }
-    else if (pathname == "/api/register") {
+    else if (pathname == "/api/user/register") {
         if (method == 'POST') {
             try {
                 const body = await getRequestBody(req);
@@ -151,7 +151,7 @@ const server = http.createServer(async (req, res) => {
             return res.end(JSON.stringify({ error: 'Method not allowed' }));
         }
     }
-    else if (pathname == "/api/login") {
+    else if (pathname == "/api/user/login") {
         if (method == 'POST') {
             try {
                 const body = await getRequestBody(req);
