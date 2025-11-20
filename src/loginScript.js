@@ -43,8 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return response.json();
             })
             .then(data => {
-                // Optionally handle successful login, e.g., store token
-                // localStorage.setItem('token', data.token);
+                localStorage.setItem('token', data.token);
                 window.location.href = './index.html';
             })
             .catch(error => {
@@ -94,9 +93,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 return response.json();
             })
+            .then(() => {
+                return fetch('http://localhost:4000/api/user/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Auto-login failed');
+                }
+                return response.json();
+            })
             .then(data => {
-                // Optionally handle successful login, e.g., store token
-                // localStorage.setItem('token', data.token);
+                localStorage.setItem('token', data.token);
                 window.location.href = './index.html';
             })
             .catch(error => {
