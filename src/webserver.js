@@ -1,9 +1,11 @@
 const http = require('http');
+const bcrypt = require('bcrypt');
 const { Client } = require('pg');
 require('dotenv').config();
 
 const port = process.env.PORT;
 const host = process.env.HOST;
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-={}\[\]|:;"'<>,.?/~`]).{8,100}$/;
 
 // TODO:
 
@@ -85,6 +87,70 @@ const server = http.createServer(async (req, res) => {
         res.end();
         return;
     }
+    else if (pathname == "/api/register") {
+        if (method == 'POST') {
+            try {
+                const body = await getRequestBody(req);
+                const { username, password } = body;
+
+                if (!username || !password) {
+                    res.writeHead(400, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({ error: "Missing username or password" }));
+                }
+
+                if (password.length < 8) {
+                    res.writeHead(400, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({ error: "Password must have at least 8 characters" }));
+                }
+
+                if (password.length > 100) {
+                    res.writeHead(400, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({ error: "Password must have at most 100 characters" }));
+                }
+
+                if (!passwordRegex.test(password)) {
+                    res.writeHead(400, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({
+                        error: "Password must include uppercase, lowercase, number, and symbol"
+                    }));
+                }
+
+
+                const saltRounds = 10;
+
+                let hashedPassword;
+                try {
+                    hashedPassword = await bcrypt.hash(password, saltRounds);
+                }
+                catch (err) {
+                    res.writeHead(500, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({ error: "Failed to hash password" }));
+                }
+
+                try {
+                    await db.query(
+                        `insert into users (username, password)
+                        values ($1, $2)`,
+                        [username, hashedPassword]
+                    );
+                    res.writeHead(201);
+                    return res.end(JSON.stringify({ status: "User registration success" }));
+                }
+                catch (err) {
+                    res.writeHead(500);
+                    return res.end(JSON.stringify({ error: "User registration failed" }));
+                }
+            }
+            catch (err) {
+                res.writeHead(400, { "Content-Type": "application/json" });
+                return res.end(JSON.stringify({ error: "Invalid JSON" }));
+            }
+        }
+        else {
+            res.writeHead(405, { 'Allow': 'POST' });
+            return res.end(JSON.stringify({ error: 'Method not allowed' }));
+        }
+    }
     else if (pathname == "/api/login") {
         if (method == 'POST') {
             try {
@@ -106,8 +172,6 @@ const server = http.createServer(async (req, res) => {
                     return res.end(JSON.stringify({ error: "Password must have at most 100 characters" }));
                 }
 
-                const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-={}\[\]|:;"'<>,.?/~`]).{8,100}$/;
-
                 if (!passwordRegex.test(password)) {
                     res.writeHead(400, { "Content-Type": "application/json" });
                     return res.end(JSON.stringify({
@@ -117,14 +181,21 @@ const server = http.createServer(async (req, res) => {
 
                 try {
                     const result = await db.query(
-                        `select user_id
+                        `select user_id, password
                         from users
-                        where username = $1
-                        and password = $2`,
-                        [username, password]
+                        where username = $1`,
+                        [username]
                     );
 
                     if (result.rows.length === 0) {
+                        res.writeHead(401, { "Content-Type": "application/json" });
+                        return res.end(JSON.stringify({ error: "Invalid username or password" }));
+                    }
+
+                    const dbPassword = result.rows[0].password;
+                    const match = await bcrypt.compare(password, dbPassword);
+
+                    if (!match) {
                         res.writeHead(401, { "Content-Type": "application/json" });
                         return res.end(JSON.stringify({ error: "Invalid username or password" }));
                     }
