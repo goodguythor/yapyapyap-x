@@ -20,6 +20,8 @@ function getRequestBody(req) {
         });
 
         req.on("end", () => {
+            if (!body) return resolve({});
+
             try {
                 const json = JSON.parse(body);
                 resolve(json);
@@ -59,7 +61,7 @@ const server = http.createServer(async (req, res) => {
     const pathname = parsedUrl.pathname;
 
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     async function getUserId(target) {
@@ -330,8 +332,7 @@ const server = http.createServer(async (req, res) => {
     }
     else if (pathname == "/api/contact") {
         if (method == 'GET') {
-            const body = await getRequestBody(req);
-            const { userId } = body;
+            const userId = parsedUrl.searchParams.get("user_id");
 
             if (!userId) {
                 res.writeHead(400);
@@ -372,10 +373,17 @@ const server = http.createServer(async (req, res) => {
                 return res.end(JSON.stringify({ error: "User not found" }));
             }
 
+            if (userId === targetId) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "Cannot add this account into contact" }));
+            }
+
             try {
                 await db.query(
                     `insert into contacts (user_id, contact_id) 
-                    values ($1, $2)`,
+                    values ($1, $2)
+                    on conflict (user_id, contact_id)
+                    do update set deleted = false`,
                     [userId, targetId]
                 );
                 res.writeHead(201);
