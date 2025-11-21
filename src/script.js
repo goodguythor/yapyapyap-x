@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const username = prompt("Enter your username:");
+    const userId = localStorage.getItem('userId');
+    const username = localStorage.getItem('username');
     const socket = new WebSocket(`ws://localhost:8080/yapyapyap/chat/${username}`);
     const chatContainer = document.querySelector(".chat");
     const inputBox = document.querySelector(".text-box");
@@ -10,42 +11,26 @@ document.addEventListener("DOMContentLoaded", () => {
     const contactBox = document.querySelector(".contact-box");
     const logoutButton = document.querySelector(".logout-button");
     const deleteButton = document.querySelector(".delete-button");
-
-
+    // TODO:
+    // - fix chat fetching
+    // - implement more secure shit
     let recipient = "";
     let fetchedMessages = [];
-
-    fetch(`http://localhost:4000/api/contact?username=${username}`)
-        .then(res => res.json())
-        .then(data => {
-            contactList.innerHTML = ""; // Clear existing buttons
-            // console.log("Contacts fetched:", data[0].username);
-            data.forEach(contact => {
-                createContactButton(contact.username);
-            });
-        })
-        .catch(err => console.error("Failed to fetch contacts:", err));
-
-    setInterval(() => {
-        if (recipient && fetchedMessages.length > 0) {
-            const lastMessage = fetchedMessages[fetchedMessages.length - 1];
-            const lastTimestamp = lastMessage ? lastMessage.timestamp : "";
-            fetchNewChat(username, recipient, lastTimestamp);
-        }
-    }, 3000);
 
     socket.onopen = () => {
         console.log("Connected to WebSocket as", username);
         const initPayload = {
             sender: username,
-            msg: `${username}`
+            message: `${username} has logged in`,
+            timestamp: Date.now()
         };
         socket.send(JSON.stringify(initPayload));
     };
 
     socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        appendMessage(data.msg);
+        // console.log(data);
+        appendMessage(data.message);
     };
 
     socket.onclose = () => {
@@ -56,13 +41,23 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("WebSocket error:", err);
     };
 
+    fetch(`http://localhost:4000/api/contact?user_id=${userId}`)
+        .then(res => res.json())
+        .then(data => {
+            data.forEach(contact => {
+                createContactButton(contact.username);
+            });
+        })
+        .catch(err => console.error("Failed to fetch contacts:", err));
+
     sendButton.addEventListener("click", () => {
         const message = inputBox.value.trim();
         if (message !== "") {
             const payload = {
                 sender: username,
-                msg: message,
-                target: recipient
+                message: message,
+                target: recipient == "" ? "Server" : recipient,
+                timestamp: Date.now()
             };
             // console.log("Sending message:", payload);
             socket.send(JSON.stringify(payload));
@@ -81,33 +76,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
     addButton.addEventListener("click", () => {
         const newContact = contactBox.value.trim();
-        if (newContact !== "") {
+        if (newContact === username) alert("Can't add your account into contact");
+        else if (newContact !== "") {
             fetch(`http://localhost:4000/api/contact`, {
                 method: "POST",
                 body: JSON.stringify({
-                    username: username,
-                    contact: newContact
+                    userId: userId,
+                    target: newContact
                 }),
                 headers: {
                     "Content-Type": "application/json"
                 }
             })
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error("Failed to add contact");
-                }
-                return res.json();
-            })
-            .then(data => {
-                console.log("Contact added:", data);
-                createContactButton(newContact);
-                contactBox.value = ""; // Clear input box   
-            })
-            .catch(err => {
-                console.error("Error adding contact:", err);
-                alert("Failed to add contact. Please try again.");
-            }); 
-        } else {
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error("Failed to add contact");
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    console.log("Contact added:", data);
+                    createContactButton(newContact);
+                    contactBox.value = ""; // Clear input box   
+                })
+                .catch(err => {
+                    console.error("Error adding contact:", err);
+                    alert("Failed to add contact. Please try again.");
+                });
+        }
+        else {
             alert("Contact name cannot be empty.");
         }
     });
@@ -116,41 +113,41 @@ document.addEventListener("DOMContentLoaded", () => {
         if (recipient === "") {
             alert("Please select a contact to delete.");
             return;
-        }   
+        }
         if (confirm(`Are you sure you want to delete the contact "${recipient}"?`)) {
             fetch(`http://localhost:4000/api/contact`, {
-                method: "DELETE",
-                body: JSON.stringify({
-                    username: username,
-                    contact: recipient
-                }),
+                method: "PATCH",
                 headers: {
                     "Content-Type": "application/json"
-                }
+                },
+                body: JSON.stringify({
+                    userId: userId,
+                    target: recipient
+                }),
             })
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error("Failed to delete contact");
-                }
-                return res.json();
-            })
-            .then(data => {
-                console.log("Contact deleted:", data);
-                const contactButton = [...document.querySelectorAll('.contact-button')].find(button => button.textContent.includes(recipient));
-                if (contactButton) {
-                    contactList.removeChild(contactButton);
-                }
-                recipient = "";
-                contactNameDisplay.textContent = "yaPyaPyaP";
-                chatContainer.innerHTML = "";
-            })
-            .catch(err => {
-                console.error("Error deleting contact:", err);
-                alert("Failed to delete contact. Please try again.");
-            });
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error("Failed to delete contact");
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    console.log("Contact deleted:", data);
+                    const contactButton = [...document.querySelectorAll('.contact-button')].find(button => button.textContent.includes(recipient));
+                    if (contactButton) {
+                        contactList.removeChild(contactButton);
+                    }
+                    recipient = "";
+                    contactNameDisplay.textContent = "yaPyaPyaP";
+                    chatContainer.innerHTML = "";
+                })
+                .catch(err => {
+                    console.error("Error deleting contact:", err);
+                    alert("Failed to delete contact. Please try again.");
+                });
         }
     }
-);
+    );
 
     function createContactButton(contactName) {
         const button = document.createElement("button");
@@ -197,7 +194,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(data => {
                 chatContainer.innerHTML = "";
                 data.forEach(msgObj => {
-                    fetchedMessages.push({...msgObj, sent: true});
+                    fetchedMessages.push({ ...msgObj, sent: true });
                 });
             })
             .catch(err => console.error("Failed to fetch chat:", err));
@@ -206,7 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(data => {
                 chatContainer.innerHTML = "";
                 data.forEach(msgObj => {
-                    fetchedMessages.push({...msgObj, sent: false});
+                    fetchedMessages.push({ ...msgObj, sent: false });
                 });
             })
             .catch(err => console.error("Failed to fetch chat:", err));
@@ -214,7 +211,7 @@ document.addEventListener("DOMContentLoaded", () => {
             fetchedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
             fetchedMessages.forEach(msgObj => {
                 // console.log(msgObj);
-                if(msgObj.sent) {
+                if (msgObj.sent) {
                     appendMessage(msgObj.message);
                 } else {
                     appendReceivedMessage(msgObj.message);
@@ -230,7 +227,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(data => {
                 // chatContainer.innerHTML = "";
                 data.forEach(msgObj => {
-                    newMessages.push({...msgObj, sent: true});
+                    newMessages.push({ ...msgObj, sent: true });
                 });
             })
             .catch(err => console.error("Failed to fetch chat:", err));
@@ -239,7 +236,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(data => {
                 // chatContainer.innerHTML = "";
                 data.forEach(msgObj => {
-                    newMessages.push({...msgObj, sent: false});
+                    newMessages.push({ ...msgObj, sent: false });
                 });
             })
             .catch(err => console.error("Failed to fetch chat:", err));
@@ -248,7 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
             newMessages.forEach(msgObj => {
                 console.log(msgObj);
                 fetchedMessages.push(msgObj);
-                if(msgObj.sent) {
+                if (msgObj.sent) {
                     appendMessage(msgObj.message);
                 } else {
                     appendReceivedMessage(msgObj.message);
