@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         fetch('http://localhost:4000/api/user/login', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -43,7 +44,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 return response.json();
             })
             .then(data => {
-                localStorage.setItem('token', data.token);
+                localStorage.setItem('userId', data);
+                localStorage.setItem('username', username);
                 window.location.href = './index.html';
             })
             .catch(error => {
@@ -96,6 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(() => {
                 return fetch('http://localhost:4000/api/user/login', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
                 });
@@ -107,7 +110,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 return response.json();
             })
             .then(data => {
-                localStorage.setItem('token', data.token);
+                //console.log(data);
+                localStorage.setItem('userId', data);
+                localStorage.setItem('username', username);
                 window.location.href = './index.html';
             })
             .catch(error => {
