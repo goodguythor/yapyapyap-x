@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        // console.log(data);
+        console.log(data);
         appendMessage(data.message);
     };
 
@@ -41,7 +41,13 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("WebSocket error:", err);
     };
 
-    fetch(`http://localhost:4000/api/contact?user_id=${userId}`)
+    fetch(
+        `http://localhost:4000/api/contact`,
+        {
+            method: 'GET',
+            credentials: 'include',
+        }
+    )
         .then(res => res.json())
         .then(data => {
             data.forEach(contact => {
@@ -54,10 +60,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const message = inputBox.value.trim();
         if (message !== "") {
             const payload = {
-                sender: username,
+                senderId: userId,
                 message: message,
                 target: recipient == "" ? "Server" : recipient,
-                timestamp: Date.now()
             };
             // console.log("Sending message:", payload);
             socket.send(JSON.stringify(payload));
@@ -80,8 +85,8 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (newContact !== "") {
             fetch(`http://localhost:4000/api/contact`, {
                 method: "POST",
+                credentials: 'include',
                 body: JSON.stringify({
-                    userId: userId,
                     target: newContact
                 }),
                 headers: {
@@ -117,11 +122,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (confirm(`Are you sure you want to delete the contact "${recipient}"?`)) {
             fetch(`http://localhost:4000/api/contact`, {
                 method: "PATCH",
+                credentials: 'include',
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    userId: userId,
                     target: recipient
                 }),
             })
@@ -157,7 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
             recipient = contactName;
             contactNameDisplay.textContent = recipient;
             chatContainer.innerHTML = "";
-            fetchChatHistory(username, recipient);
+            fetchChatHistory(recipient);
         });
         contactList.appendChild(button);
     }
@@ -187,9 +192,15 @@ document.addEventListener("DOMContentLoaded", () => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    function fetchChatHistory(sender, target) {
+    function fetchChatHistory(target) {
         fetchedMessages = [];
-        const msgSent = fetch(`http://localhost:4000/api/chat?sender=${sender}&target=${target}`)
+        const msgSent = fetch(
+            `http://localhost:4000/api/chat?target=${target}`,
+            {
+                method: 'GET',
+                credentials: 'include',
+            }
+        )
             .then(res => res.json())
             .then(data => {
                 chatContainer.innerHTML = "";
@@ -198,53 +209,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             })
             .catch(err => console.error("Failed to fetch chat:", err));
-        const msgRec = fetch(`http://localhost:4000/api/chat?sender=${target}&target=${sender}`)
-            .then(res => res.json())
-            .then(data => {
-                chatContainer.innerHTML = "";
-                data.forEach(msgObj => {
-                    fetchedMessages.push({ ...msgObj, sent: false });
-                });
-            })
-            .catch(err => console.error("Failed to fetch chat:", err));
-        Promise.all([msgSent, msgRec]).then(() => {
-            fetchedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        Promise.all([msgSent]).then(() => {
             fetchedMessages.forEach(msgObj => {
                 // console.log(msgObj);
-                if (msgObj.sent) {
-                    appendMessage(msgObj.message);
-                } else {
-                    appendReceivedMessage(msgObj.message);
-                }
-            });
-        });
-    }
-
-    function fetchNewChat(sender, target, last) {
-        let newMessages = [];
-        const msgSent = fetch(`http://localhost:4000/api/chat?sender=${sender}&target=${target}&timestamp=${last}`)
-            .then(res => res.json())
-            .then(data => {
-                // chatContainer.innerHTML = "";
-                data.forEach(msgObj => {
-                    newMessages.push({ ...msgObj, sent: true });
-                });
-            })
-            .catch(err => console.error("Failed to fetch chat:", err));
-        const msgRec = fetch(`http://localhost:4000/api/chat?sender=${target}&target=${sender}&timestamp=${last}`)
-            .then(res => res.json())
-            .then(data => {
-                // chatContainer.innerHTML = "";
-                data.forEach(msgObj => {
-                    newMessages.push({ ...msgObj, sent: false });
-                });
-            })
-            .catch(err => console.error("Failed to fetch chat:", err));
-        Promise.all([msgSent, msgRec]).then(() => {
-            newMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-            newMessages.forEach(msgObj => {
-                console.log(msgObj);
-                fetchedMessages.push(msgObj);
                 if (msgObj.sent) {
                     appendMessage(msgObj.message);
                 } else {
