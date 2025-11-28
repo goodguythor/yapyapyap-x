@@ -1,5 +1,6 @@
 const http = require('http');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { Client } = require('pg');
 require('dotenv').config();
 
@@ -10,6 +11,10 @@ const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-={}\[\
 // TODO:
 
 let db = null;
+
+function generateSessionToken() {
+    return crypto.randomBytes(32).toString("hex");
+}
 
 function getRequestBody(req) {
     return new Promise((resolve, reject) => {
@@ -33,6 +38,25 @@ function getRequestBody(req) {
 
         req.on("error", reject);
     });
+}
+
+function setCookie(res, name, value, options = {}) {
+    let cookie = `${name}=${value}`;
+
+    if (options.httpOnly) cookie += `; HttpOnly`;
+    if (options.maxAge) cookie += `; Max-Age=${options.maxAge}`;
+    if (options.path) cookie += `; Path=${options.path}`;
+    if (options.sameSite) cookie += `; SameSite=${options.sameSite}`;
+
+    res.setHeader('Set-Cookie', cookie);
+}
+
+function parseCookies(req) {
+    const header = req.headers.cookie;
+    if (!header) return {};
+    return Object.fromEntries(
+        header.split(";").map(c => c.trim().split("="))
+    );
 }
 
 async function connectDB() {
@@ -61,6 +85,7 @@ const server = http.createServer(async (req, res) => {
     const pathname = parsedUrl.pathname;
 
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -82,6 +107,26 @@ const server = http.createServer(async (req, res) => {
         if (row.username === target) targetId = row.user_id;
 
         return targetId;
+    }
+
+    async function getUserIdFromToken(req) {
+        const cookies = parseCookies(req);
+        const sessionToken = cookies.session_token;
+
+        if (!sessionToken) {
+            return null;
+        }
+
+        const session = await db.query(
+            "select user_id from sessions where token = $1",
+            [sessionToken]
+        );
+
+        if (session.rows.length === 0) {
+            return null;
+        }
+
+        return session.rows[0].user_id;
     }
 
     if (method == 'OPTIONS') {
@@ -164,21 +209,9 @@ const server = http.createServer(async (req, res) => {
                     return res.end(JSON.stringify({ error: "Missing username or password" }));
                 }
 
-                if (password.length < 8) {
+                if (password.length < 8 || password.length > 100) {
                     res.writeHead(400, { "Content-Type": "application/json" });
-                    return res.end(JSON.stringify({ error: "Password must have at least 8 characters" }));
-                }
-
-                if (password.length > 100) {
-                    res.writeHead(400, { "Content-Type": "application/json" });
-                    return res.end(JSON.stringify({ error: "Password must have at most 100 characters" }));
-                }
-
-                if (!passwordRegex.test(password)) {
-                    res.writeHead(400, { "Content-Type": "application/json" });
-                    return res.end(JSON.stringify({
-                        error: "Password must include uppercase, lowercase, number, and symbol"
-                    }));
+                    return res.end(JSON.stringify({ error: "Invalid username or password" }));
                 }
 
                 try {
@@ -202,8 +235,26 @@ const server = http.createServer(async (req, res) => {
                         return res.end(JSON.stringify({ error: "Invalid username or password" }));
                     }
 
-                    res.writeHead(200);
-                    return res.end(JSON.stringify(result.rows[0].user_id));
+                    const userId = result.rows[0].user_id;
+                    const sessionToken = generateSessionToken();
+
+                    await db.query(
+                        `insert into sessions (user_id, token)
+                        values ($1, $2)
+                        on conflicts (user_id)
+                        do update set token = excluded.token`,
+                        [userId, sessionToken]
+                    );
+
+                    setCookie(res, "session_token", sessionToken, {
+                        httpOnly: true,
+                        maxAge: 604800,
+                        path: "/",
+                        sameSite: "Strict"
+                    });
+
+                    res.writeHead(200, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({ user_id: userId }));
                 }
                 catch (err) {
                     res.writeHead(500);
@@ -222,8 +273,14 @@ const server = http.createServer(async (req, res) => {
     }
     else if (pathname == "/api/chat") {
         if (method == 'GET') {
-            const body = await getRequestBody(req);
-            const { senderId, target } = body;
+            const senderId = await getUserIdFromToken(req);
+
+            if (!senderId) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "Invalid Session" }));
+            }
+
+            const target = parsedUrl.searchParams.get('target');
 
             if (!target) {
                 res.writeHead(400);
@@ -232,7 +289,7 @@ const server = http.createServer(async (req, res) => {
 
             const targetId = await getUserId(target);
 
-            if (!senderId || !targetId) {
+            if (!targetId) {
                 res.writeHead(400);
                 return res.end(JSON.stringify({ error: "User not found" }));
             }
@@ -256,8 +313,15 @@ const server = http.createServer(async (req, res) => {
             }
         }
         else if (method == 'POST') {
+            const senderId = await getUserIdFromToken(req);
+
+            if (!senderId) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "Invalid Session" }));
+            }
+
             const body = await getRequestBody(req);
-            const { senderId, target, message } = body;
+            const { target, message } = body;
 
             if (!message) {
                 res.writeHead(400);
@@ -266,7 +330,7 @@ const server = http.createServer(async (req, res) => {
 
             const targetId = await getUserId(target);
 
-            if (!senderId || !targetId) {
+            if (!targetId) {
                 res.writeHead(400);
                 return res.end(JSON.stringify({ error: "User not found" }));
             }
@@ -286,8 +350,15 @@ const server = http.createServer(async (req, res) => {
             }
         }
         else if (method == 'PATCH') {
+            const senderId = await getUserIdFromToken(req);
+
+            if (!senderId) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "Invalid Session" }));
+            }
+
             const body = await getRequestBody(req);
-            const { senderId, target, messageId } = body;
+            const { target, messageId } = body;
 
             if (!target) {
                 res.writeHead(400);
@@ -302,7 +373,7 @@ const server = http.createServer(async (req, res) => {
 
             const targetId = await getUserId(target);
 
-            if (!senderId || !targetId) {
+            if (!targetId) {
                 res.writeHead(400);
                 return res.end(JSON.stringify({ error: "User not found" }));
             }
@@ -332,11 +403,11 @@ const server = http.createServer(async (req, res) => {
     }
     else if (pathname == "/api/contact") {
         if (method == 'GET') {
-            const userId = parsedUrl.searchParams.get("user_id");
+            const userId = await getUserIdFromToken(req);
 
             if (!userId) {
                 res.writeHead(400);
-                return res.end(JSON.stringify({ error: "User not found" }));
+                return res.end(JSON.stringify({ error: "Invalid Session" }));
             }
 
             try {
@@ -358,8 +429,15 @@ const server = http.createServer(async (req, res) => {
             }
         }
         else if (method == 'POST') {
+            const userId = await getUserIdFromToken(req);
+
+            if (!userId) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "Invalid Session" }));
+            }
+
             const body = await getRequestBody(req);
-            const { userId, target } = body;
+            const { target } = body;
 
             if (!target) {
                 res.writeHead(400);
@@ -368,7 +446,7 @@ const server = http.createServer(async (req, res) => {
 
             const targetId = await getUserId(target);
 
-            if (!userId || !targetId) {
+            if (!targetId) {
                 res.writeHead(400);
                 return res.end(JSON.stringify({ error: "User not found" }));
             }
@@ -395,8 +473,15 @@ const server = http.createServer(async (req, res) => {
             }
         }
         else if (method == 'PATCH') {
+            const userId = await getUserIdFromToken(req);
+
+            if (!userId) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "Invalid Session" }));
+            }
+
             const body = await getRequestBody(req);
-            const { userId, target } = body;
+            const { target } = body;
 
             if (!target) {
                 res.writeHead(400);
@@ -405,7 +490,7 @@ const server = http.createServer(async (req, res) => {
 
             const targetId = await getUserId(target);
 
-            if (!userId || !targetId) {
+            if (!targetId) {
                 res.writeHead(400);
                 return res.end(JSON.stringify({ error: "User not found" }));
             }
