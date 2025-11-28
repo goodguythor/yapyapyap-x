@@ -84,7 +84,7 @@ const server = http.createServer(async (req, res) => {
     const parsedUrl = new URL(url, `http://${host}:${port}`);
     const pathname = parsedUrl.pathname;
 
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -241,7 +241,7 @@ const server = http.createServer(async (req, res) => {
                     await db.query(
                         `insert into sessions (user_id, token)
                         values ($1, $2)
-                        on conflicts (user_id)
+                        on conflict (user_id)
                         do update set token = excluded.token`,
                         [userId, sessionToken]
                     );
