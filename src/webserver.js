@@ -118,7 +118,10 @@ const server = http.createServer(async (req, res) => {
         }
 
         const session = await db.query(
-            "select user_id from sessions where token = $1",
+            `select user_id 
+            from sessions
+            where token = $1 
+            and expires_at >= now()`,
             [sessionToken]
         );
 
@@ -248,7 +251,7 @@ const server = http.createServer(async (req, res) => {
 
                     setCookie(res, "session_token", sessionToken, {
                         httpOnly: true,
-                        maxAge: 604800,
+                        maxAge: 2592000,
                         path: "/",
                         sameSite: "Strict"
                     });
