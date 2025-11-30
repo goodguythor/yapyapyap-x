@@ -111,6 +111,7 @@ const server = http.createServer(async (req, res) => {
 
     async function getUserIdFromToken(req) {
         const cookies = parseCookies(req);
+
         const sessionToken = cookies.session_token;
 
         if (!sessionToken) {
@@ -251,13 +252,14 @@ const server = http.createServer(async (req, res) => {
 
                     setCookie(res, "session_token", sessionToken, {
                         httpOnly: true,
+                        secure: true,
                         maxAge: 2592000,
                         path: "/",
-                        sameSite: "None"
+                        sameSite: "Lax"
                     });
 
                     res.writeHead(200, { "Content-Type": "application/json" });
-                    return res.end(JSON.stringify({ user_id: userId }));
+                    return res.end(JSON.stringify({ status: "Login Success" }));
                 }
                 catch (err) {
                     res.writeHead(500);
