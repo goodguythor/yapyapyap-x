@@ -1,7 +1,25 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const userId = localStorage.getItem('userId');
-    const username = localStorage.getItem('username');
-    const socket = new WebSocket(`ws://localhost:8080/yapyapyap/chat/${username}`);
+document.addEventListener("DOMContentLoaded", async () => {
+    async function fetchMe() {
+        const res = await fetch("http://localhost:4000/api/user/me", {
+            method: "GET",
+            credentials: "include"
+        });
+
+        const data = await res.json();
+        return data;
+    }
+
+    const me = await fetchMe();
+    if (!me || !me.username) {
+        window.location.href = "./login.html";
+        return;
+    }
+
+    const username = me.username;
+
+    console.log("Logged in as", username);
+
+    const socket = new WebSocket(`ws://localhost:8080/${username}`);
     const chatContainer = document.querySelector(".chat");
     const inputBox = document.querySelector(".text-box");
     const sendButton = document.querySelector(".send-button");
@@ -19,12 +37,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     socket.onopen = () => {
         console.log("Connected to WebSocket as", username);
-        const initPayload = {
-            sender: username,
-            message: `${username} has logged in`,
-            timestamp: Date.now()
-        };
-        socket.send(JSON.stringify(initPayload));
     };
 
     socket.onmessage = (event) => {
@@ -59,15 +71,17 @@ document.addEventListener("DOMContentLoaded", () => {
     sendButton.addEventListener("click", () => {
         const message = inputBox.value.trim();
         if (message !== "") {
-            const payload = {
-                senderId: userId,
-                message: message,
-                target: recipient == "" ? "Server" : recipient,
-            };
-            // console.log("Sending message:", payload);
-            socket.send(JSON.stringify(payload));
-            appendMessage(message);
             inputBox.value = "";
+
+            if (recipient != "") {
+                const payload = {
+                    sender: username,
+                    message: message,
+                    target: recipient,
+                };
+                // console.log("Sending message:", payload);
+                socket.send(JSON.stringify(payload));
+            }
         }
         // console.log(message);
     });
