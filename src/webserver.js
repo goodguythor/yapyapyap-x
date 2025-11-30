@@ -253,7 +253,7 @@ const server = http.createServer(async (req, res) => {
                         httpOnly: true,
                         maxAge: 2592000,
                         path: "/",
-                        sameSite: "Strict"
+                        sameSite: "None"
                     });
 
                     res.writeHead(200, { "Content-Type": "application/json" });
@@ -271,6 +271,43 @@ const server = http.createServer(async (req, res) => {
         }
         else {
             res.writeHead(405, { 'Allow': 'POST' });
+            return res.end(JSON.stringify({ error: 'Method not allowed' }));
+        }
+    }
+    else if (pathname == "/api/user/me") {
+        if (method == 'GET') {
+            const userId = await getUserIdFromToken(req);
+
+            if (!userId) {
+                res.writeHead(400);
+                return res.end(JSON.stringify({ error: "Invalid Session" }));
+            }
+
+            try {
+                const result = await db.query(
+                    `select username
+                    from users
+                    where user_id = $1`,
+                    [userId]
+                );
+
+                if (result.rows.length === 0) {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    return res.end(JSON.stringify({ error: "User not found" }));
+                }
+
+                const username = result.rows[0].username;
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                return res.end(JSON.stringify({ username }));
+            }
+            catch (err) {
+                res.writeHead(500);
+                return res.end(JSON.stringify({ error: err }));
+            }
+        }
+        else {
+            res.writeHead(405, { 'Allow': 'GET' });
             return res.end(JSON.stringify({ error: 'Method not allowed' }));
         }
     }
