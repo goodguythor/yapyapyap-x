@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         .then(res => res.json())
         .then(data => {
             data.forEach(contact => {
-                createContactButton(contact.username);
+                createContactButton(contact.username, contact.contact);
             });
         })
         .catch(err => console.error("Failed to fetch contacts:", err));
@@ -82,7 +82,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             if (recipient != "") {
                 const payload = {
-                    sender: username,
                     message: message,
                     target: recipient,
                 };
@@ -122,7 +121,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 })
                 .then(data => {
                     console.log("Contact added:", data);
-                    createContactButton(newContact);
+                    createContactButton(newContact, true);
                     contactBox.value = ""; // Clear input box   
                 })
                 .catch(err => {
@@ -140,49 +139,85 @@ document.addEventListener("DOMContentLoaded", async () => {
             alert("Please select a contact to delete.");
             return;
         }
-        if (confirm(`Are you sure you want to delete the contact "${recipient}"?`)) {
+        if (deleteButton.textContent === "Delete Contact") {
+            if (confirm(`Are you sure you want to delete the contact "${recipient}"?`)) {
+                fetch(`http://localhost:4000/api/contact`, {
+                    method: "PATCH",
+                    credentials: 'include',
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        target: recipient
+                    }),
+                })
+                    .then(res => {
+                        if (!res.ok) {
+                            throw new Error("Failed to delete contact");
+                        }
+                        return res.json();
+                    })
+                    .then(data => {
+                        console.log("Contact deleted:", data);
+                        const contactButton = [...document.querySelectorAll('.contact-button')].find(button => button.textContent === recipient);
+                        if (contactButton) {
+                            contactButton.dataset.isContact = "false";
+                            deleteButton.textContent = "Add Contact";
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Error deleting contact:", err);
+                        alert("Failed to delete contact. Please try again.");
+                    });
+            }
+        }
+        else {
             fetch(`http://localhost:4000/api/contact`, {
-                method: "PATCH",
+                method: "POST",
                 credentials: 'include',
-                headers: {
-                    "Content-Type": "application/json"
-                },
                 body: JSON.stringify({
                     target: recipient
                 }),
+                headers: {
+                    "Content-Type": "application/json"
+                }
             })
                 .then(res => {
                     if (!res.ok) {
-                        throw new Error("Failed to delete contact");
+                        throw new Error("Failed to add contact");
                     }
                     return res.json();
                 })
                 .then(data => {
-                    console.log("Contact deleted:", data);
-                    const contactButton = [...document.querySelectorAll('.contact-button')].find(button => button.textContent.includes(recipient));
+                    console.log("Contact added:", data);
+                    const contactButton = [...document.querySelectorAll('.contact-button')].find(button => button.textContent === recipient);
                     if (contactButton) {
-                        contactList.removeChild(contactButton);
+                        contactButton.dataset.isContact = "true";
+                        deleteButton.textContent = "Delete Contact";
                     }
-                    recipient = "";
-                    contactNameDisplay.textContent = "yaPyaPyaP";
-                    chatContainer.innerHTML = "";
                 })
                 .catch(err => {
-                    console.error("Error deleting contact:", err);
-                    alert("Failed to delete contact. Please try again.");
+                    console.error("Error adding contact:", err);
+                    alert("Failed to add contact. Please try again.");
                 });
         }
-    }
-    );
+    });
 
-    function createContactButton(contactName) {
+    function createContactButton(contactName, isContact) {
         const button = document.createElement("button");
         button.textContent = contactName;
         button.classList.add("contact-button");
+
+        button.dataset.isContact = isContact ? "true" : "false";
+
         button.addEventListener("click", () => {
             recipient = contactName;
             contactNameDisplay.textContent = recipient;
             chatContainer.innerHTML = "";
+
+            if (button.dataset.isContact === "false") deleteButton.textContent = "Add Contact";
+            else deleteButton.textContent = "Delete Contact";
+
             fetchChatHistory(recipient);
         });
         contactList.appendChild(button);

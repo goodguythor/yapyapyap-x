@@ -97,9 +97,9 @@ server.on('connection', async (ws, req) => {
             return;
         }
 
-        const { message, sender, target } = parsed;
+        const { message, target } = parsed;
 
-        if (!message || !sender || !target) {
+        if (!message || !target) {
             ws.send(JSON.stringify({ error: "Missing fields" }));
             return;
         }
