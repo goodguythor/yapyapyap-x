@@ -455,11 +455,15 @@ const server = http.createServer(async (req, res) => {
 
             try {
                 const result = await db.query(
-                    `select u.username
+                    `select distinct u.username
                     from users as u
                     join contacts as c
-                    on c.contact_id = u.user_id
-                    where c.user_id = $1
+                    on u.user_id = case
+                                    when c.user_id = $1 then c.contact_id
+                                    else c.user_id
+                                    end
+                    where (c.user_id = $1
+                    or c.contact_id = $1)
                     and deleted = false`,
                     [userId]
                 );
