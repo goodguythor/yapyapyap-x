@@ -126,7 +126,7 @@ server.on('connection', async (ws, req) => {
             );
 
             ws.send(JSON.stringify({
-                status: "Message saved",
+                type: "Message",
                 message,
                 senderId: ws.userId,
                 recipientId,
@@ -137,7 +137,7 @@ server.on('connection', async (ws, req) => {
             const targetSocket = clients.get(recipientId);
             if (targetSocket) {
                 targetSocket.send(JSON.stringify({
-                    status: "Message saved",
+                    type: "Message",
                     message,
                     senderId: ws.userId,
                     recipientId,
