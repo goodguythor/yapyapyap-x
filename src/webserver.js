@@ -455,19 +455,21 @@ const server = http.createServer(async (req, res) => {
 
             try {
                 const result = await db.query(
-                    `(select u.username
+                    `select username, (max(contact::int)::boolean) as contact
+                    from ((select u.username, true as contact
                     from users u
                     join contacts c
                     on c.contact_id = u.user_id
                     where c.user_id = $1
                     and c.deleted = false)
                     union
-                    (select u.username
+                    (select u.username, false as contact
                     from users u
                     join messages m
                     on (u.user_id = m.sender_id and m.recipient_id = $1)
                     or (u.user_id = m.recipient_id and m.sender_id = $1)
-                    where m.deleted = false)`,
+                    where m.deleted = false)) t
+                    group by username`,
                     [userId]
                 );
                 res.writeHead(200, { 'content-type': 'application/json' });
