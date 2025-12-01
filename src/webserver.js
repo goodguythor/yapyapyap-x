@@ -355,43 +355,6 @@ const server = http.createServer(async (req, res) => {
                 return res.end(JSON.stringify({ error: err }));
             }
         }
-        else if (method == 'POST') {
-            const senderId = await getUserIdFromToken(req);
-
-            if (!senderId) {
-                res.writeHead(400);
-                return res.end(JSON.stringify({ error: "Invalid Session" }));
-            }
-
-            const body = await getRequestBody(req);
-            const { target, message } = body;
-
-            if (!message) {
-                res.writeHead(400);
-                return res.end(JSON.stringify({ error: "Message not found" }));
-            }
-
-            const targetId = await getUserId(target);
-
-            if (!targetId) {
-                res.writeHead(400);
-                return res.end(JSON.stringify({ error: "User not found" }));
-            }
-
-            try {
-                await db.query(
-                    `insert into messages (message, sender_id, recipient_id) 
-                    values ($1, $2, $3)`,
-                    [message, senderId, targetId]
-                );
-                res.writeHead(201);
-                return res.end(JSON.stringify({ status: "Insert successful" }));
-            }
-            catch (err) {
-                res.writeHead(500);
-                return res.end(JSON.stringify({ error: err }));
-            }
-        }
         else if (method == 'PATCH') {
             const senderId = await getUserIdFromToken(req);
 
@@ -440,7 +403,7 @@ const server = http.createServer(async (req, res) => {
             }
         }
         else {
-            res.writeHead(405, { 'Allow': 'GET, POST, PATCH' });
+            res.writeHead(405, { 'Allow': 'GET, PATCH' });
             return res.end(JSON.stringify({ error: 'Method not allowed' }));
         }
     }
