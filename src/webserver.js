@@ -455,14 +455,19 @@ const server = http.createServer(async (req, res) => {
 
             try {
                 const result = await db.query(
-                    `select distinct u.username
-                    from users as u
-                    join contacts as c
+                    `(select u.username
+                    from users u
+                    join contacts c
                     on c.contact_id = u.user_id
-                    join messages as m
-                    on u.user_id = case when m.sender_id = $1 then m.recipient_id else m.sender_id end
-                    where (c.user_id = $1 and c.deleted = false)
-                    or ((m.sender_id = $1 or m.recipient_id = $1) and m.deleted = false)`,
+                    where c.user_id = $1
+                    and c.deleted = false)
+                    union
+                    (select u.username
+                    from users u
+                    join messages m
+                    on (u.user_id = m.sender_id and m.recipient_id = $1)
+                    or (u.user_id = m.recipient_id and m.sender_id = $1)
+                    where m.deleted = false)`,
                     [userId]
                 );
                 res.writeHead(200, { 'content-type': 'application/json' });
