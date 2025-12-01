@@ -458,13 +458,11 @@ const server = http.createServer(async (req, res) => {
                     `select distinct u.username
                     from users as u
                     join contacts as c
-                    on u.user_id = case
-                                    when c.user_id = $1 then c.contact_id
-                                    else c.user_id
-                                    end
-                    where (c.user_id = $1
-                    or c.contact_id = $1)
-                    and deleted = false`,
+                    on c.contact_id = u.user_id
+                    join messages as m
+                    on u.user_id = case when m.sender_id = $1 then m.recipient_id else m.sender_id end
+                    where (c.user_id = $1 and c.deleted = false)
+                    or ((m.sender_id = $1 or m.recipient_id = $1) and m.deleted = false)`,
                     [userId]
                 );
                 res.writeHead(200, { 'content-type': 'application/json' });
