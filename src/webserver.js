@@ -338,7 +338,8 @@ const server = http.createServer(async (req, res) => {
 
             try {
                 const result = await db.query(
-                    `select message_id, message, timestamp 
+                    `select message_id, message, timestamp,
+                    case when sender_id = $1 then true else false end as sent
                     from messages
                     where ((sender_id = $1 and recipient_id = $2)
                     or (sender_id = $2 and recipient_id = $1))

@@ -1,4 +1,7 @@
 document.addEventListener("DOMContentLoaded", async () => {
+    // TODO:
+    // - Split message into send & received
+    // - Fetch message from non contact
     async function fetchMe() {
         const res = await fetch("http://localhost:4000/api/user/me", {
             method: "GET",
@@ -219,7 +222,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             .then(data => {
                 chatContainer.innerHTML = "";
                 data.forEach(msgObj => {
-                    fetchedMessages.push({ ...msgObj, sent: true });
+                    fetchedMessages.push({ ...msgObj });
                 });
             })
             .catch(err => console.error("Failed to fetch chat:", err));
