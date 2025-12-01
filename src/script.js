@@ -43,9 +43,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log(data);
-        appendMessage(data.message);
+        const msgObj = JSON.parse(event.data);
+        console.log(msgObj);
+        if (msgObj.sent) {
+            appendMessage(msgObj.message);
+        } else {
+            appendReceivedMessage(msgObj.message);
+        }
     };
 
     socket.onclose = () => {

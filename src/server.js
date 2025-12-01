@@ -8,6 +8,8 @@ require('dotenv').config();
 
 console.log("WebSocket Server running at ws://localhost:8080");
 
+const clients = new Map();
+
 let db = null;
 
 function getCookie(name, cookieHeader) {
@@ -66,6 +68,7 @@ server.on('connection', async (ws, req) => {
 
         userId = result.rows[0].user_id;
         ws.userId = userId; // attach to ws object
+        clients.set(userId, ws);
 
         console.log("Authenticated user:", userId);
 
@@ -127,9 +130,21 @@ server.on('connection', async (ws, req) => {
                 message,
                 senderId: ws.userId,
                 recipientId,
+                sent: true,
                 timestamp: Date.now()
             }));
 
+            const targetSocket = clients.get(recipientId);
+            if (targetSocket) {
+                targetSocket.send(JSON.stringify({
+                    status: "Message saved",
+                    message,
+                    senderId: ws.userId,
+                    recipientId,
+                    sent: false,
+                    timestamp: Date.now()
+                }));
+            }
         } catch (err) {
             console.error("DB Error:", err);
             ws.send(JSON.stringify({ error: "Database error" }));
@@ -137,6 +152,7 @@ server.on('connection', async (ws, req) => {
     });
 
     ws.on('close', () => {
+        clients.delete(ws.userId);
         console.log("Client disconnected");
     });
 });
