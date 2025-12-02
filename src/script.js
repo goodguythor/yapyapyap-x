@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", async () => {
     // TODO:
-    // - Avoid refetching chat from contact
+    // - Add feature to edit & delete message
+    // - Add feature to reply message
     // - Check if user is online/typing etc
     async function fetchMe() {
         const res = await fetch("http://localhost:4000/api/user/me", {
@@ -240,7 +241,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         msgDiv.dataset.messageId = messageId;
         msgDiv.classList.add("sender");
         msgDiv.innerHTML = `
-            <div class="name">You</div>
+            <div class="message-header">
+                <button class="message-option">...</button>
+                <div class="name">You</div> 
+            </div>
             <div class="name">${formatTimestamp(timestamp)}</div>
             <hr class="name-line">
             <div class="message">${message}</div>
@@ -255,7 +259,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         msgDiv.dataset.messageId = messageId;
         msgDiv.classList.add("recipient");
         msgDiv.innerHTML = `
-            <div class="name">${recipient}</div>
+            <div class="message-header">
+                <button class="message-option">...</button>
+                <div class="name">${recipient}</div> 
+            </div>
             <div class="name">${formatTimestamp(timestamp)}</div>
             <hr class="name-line">
             <div class="message">${message}</div>

@@ -140,8 +140,34 @@ main{
 }
 
 .name{
+    text-align: center;
     font-weight: bold;
     font-size: 8px;
+}
+
+.message-option{
+    font-size: 4px;
+    cursor: pointer;
+    display: none;
+    position: absolute;
+    background: none;
+    border: 1px solid black;
+    border-radius: 3px;
+    top: 0;
+    left: 0;
+}
+
+.sender:hover .message-option,
+.recipient:hover .message-option {
+    display: block;
+}
+   
+.message-header{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    position: relative;
 }
 
 .chat-header{
