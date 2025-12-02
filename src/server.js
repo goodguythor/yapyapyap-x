@@ -119,17 +119,19 @@ server.on('connection', async (ws, req) => {
 
             const recipientId = result.rows[0].user_id;
 
-            await db.query(
+            const res = await db.query(
                 `INSERT INTO messages (message, sender_id, recipient_id)
-                 VALUES ($1, $2, $3)`,
+                 VALUES ($1, $2, $3)
+                returning message_id`,
                 [message, ws.userId, recipientId]
             );
 
+            const messageId = res.rows[0].message_id;
+
             ws.send(JSON.stringify({
                 type: "Message",
+                messageId: messageId,
                 message,
-                senderId: ws.userId,
-                recipientId,
                 sent: true,
                 timestamp: Date.now()
             }));
@@ -138,9 +140,8 @@ server.on('connection', async (ws, req) => {
             if (targetSocket) {
                 targetSocket.send(JSON.stringify({
                     type: "Message",
+                    messageId: messageId,
                     message,
-                    senderId: ws.userId,
-                    recipientId,
                     sent: false,
                     timestamp: Date.now()
                 }));
