@@ -46,9 +46,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const msgObj = JSON.parse(event.data);
         console.log(msgObj);
         if (msgObj.sent) {
-            appendMessage(msgObj.message);
+            appendMessage(msgObj.messageId, msgObj.message, msgObj.timestamp);
         } else {
-            appendReceivedMessage(msgObj.message);
+            appendReceivedMessage(msgObj.messageId, msgObj.message, msgObj.timestamp);
         }
     };
 
@@ -203,6 +203,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
+    function formatTimestamp(ts) {
+        const date = new Date(ts);
+
+        return date.toLocaleString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+    }
+
     function createContactButton(contactName, isContact) {
         const button = document.createElement("button");
         button.textContent = contactName;
@@ -223,11 +235,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         contactList.appendChild(button);
     }
 
-    function appendMessage(message) {
+    function appendMessage(messageId, message, timestamp) {
         const msgDiv = document.createElement("div");
+        msgDiv.dataset.messageId = messageId;
         msgDiv.classList.add("sender");
         msgDiv.innerHTML = `
             <div class="name">You</div>
+            <div class="name">${formatTimestamp(timestamp)}</div>
             <hr class="name-line">
             <div class="message">${message}</div>
         `;
@@ -236,11 +250,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    function appendReceivedMessage(message) {
+    function appendReceivedMessage(messageId, message, timestamp) {
         const msgDiv = document.createElement("div");
+        msgDiv.dataset.messageId = messageId;
         msgDiv.classList.add("recipient");
         msgDiv.innerHTML = `
             <div class="name">${recipient}</div>
+            <div class="name">${formatTimestamp(timestamp)}</div>
             <hr class="name-line">
             <div class="message">${message}</div>
         `;
@@ -269,9 +285,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             fetchedMessages.forEach(msgObj => {
                 // console.log(msgObj);
                 if (msgObj.sent) {
-                    appendMessage(msgObj.message);
+                    appendMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
                 } else {
-                    appendReceivedMessage(msgObj.message);
+                    appendReceivedMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
                 }
             });
         });
