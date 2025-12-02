@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const logoutButton = document.querySelector(".logout-button");
     const deleteButton = document.querySelector(".delete-button");
     let recipient = "";
-    let fetchedMessages = [];
+    let chatCache = {};
 
     socket.onopen = () => {
         console.log("Connected to WebSocket as", username);
@@ -41,11 +41,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     socket.onmessage = (event) => {
         const msgObj = JSON.parse(event.data);
+        const target = msgObj.sent ? msgObj.recipient : msgObj.sender;
+        if (!chatCache[target]) chatCache[target] = [];
         console.log(msgObj);
+        chatCache[target].push({ message_id: msgObj.message_id, message: msgObj.message, timestamp: msgObj.timestamp, sent: msgObj.sent });
         if (msgObj.sent) {
-            appendMessage(msgObj.messageId, msgObj.message, msgObj.timestamp);
+            appendMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
         } else {
-            appendReceivedMessage(msgObj.messageId, msgObj.message, msgObj.timestamp);
+            appendReceivedMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
         }
     };
 
@@ -261,9 +264,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
+    function renderChat(messages) {
+        chatContainer.innerHTML = "";
+        messages.forEach(msgObj => {
+            // console.log(msgObj);
+            if (msgObj.sent) {
+                appendMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
+            } else {
+                appendReceivedMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
+            }
+        });
+    }
+
     function fetchChatHistory(target) {
-        fetchedMessages = [];
-        const msgSent = fetch(
+        if (chatCache[target]) {
+            console.log(chatCache[target]);
+            renderChat(chatCache[target]);
+            return;
+        }
+        fetch(
             `http://localhost:4000/api/chat?target=${target}`,
             {
                 method: 'GET',
@@ -272,21 +291,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         )
             .then(res => res.json())
             .then(data => {
-                chatContainer.innerHTML = "";
-                data.forEach(msgObj => {
-                    fetchedMessages.push({ ...msgObj });
-                });
+                console.log(data);
+                chatCache[target] = data;
+                renderChat(data);
             })
             .catch(err => console.error("Failed to fetch chat:", err));
-        Promise.all([msgSent]).then(() => {
-            fetchedMessages.forEach(msgObj => {
-                // console.log(msgObj);
-                if (msgObj.sent) {
-                    appendMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
-                } else {
-                    appendReceivedMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
-                }
-            });
-        });
     }
 });

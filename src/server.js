@@ -70,7 +70,21 @@ server.on('connection', async (ws, req) => {
         ws.userId = userId; // attach to ws object
         clients.set(userId, ws);
 
-        console.log("Authenticated user:", userId);
+        const res = await db.query(
+            `select username from users where user_id = $1`,
+            [userId]
+        );
+
+        if (result.rows.length === 0) {
+            ws.send(JSON.stringify({ error: "Invalid user" }));
+            ws.close();
+            return;
+        }
+
+        const username = res.rows[0].username;
+        ws.username = username;
+
+        console.log("Authenticated user:", userId, username);
 
     }
     catch (err) {
@@ -129,21 +143,25 @@ server.on('connection', async (ws, req) => {
             const messageId = res.rows[0].message_id;
 
             ws.send(JSON.stringify({
-                type: "Message",
-                messageId: messageId,
+                type: "message",
+                message_id: messageId,
+                sender: ws.username,
+                recipient: target,
                 message,
+                timestamp: Date.now(),
                 sent: true,
-                timestamp: Date.now()
             }));
 
             const targetSocket = clients.get(recipientId);
             if (targetSocket) {
                 targetSocket.send(JSON.stringify({
-                    type: "Message",
-                    messageId: messageId,
+                    type: "message",
+                    message_id: messageId,
+                    sender: ws.username,
+                    recipient: target,
                     message,
+                    timestamp: Date.now(),
                     sent: false,
-                    timestamp: Date.now()
                 }));
             }
         } catch (err) {
