@@ -33,6 +33,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const contactBox = document.querySelector(".contact-box");
     const logoutButton = document.querySelector(".logout-button");
     const deleteButton = document.querySelector(".delete-button");
+    const menu = document.querySelector(".message-menu");
+
     let recipient = "";
     let chatCache = {};
 
@@ -75,6 +77,47 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
         })
         .catch(err => console.error("Failed to fetch contacts:", err));
+
+    chatContainer.addEventListener("click", (e) => {
+        if (e.target.classList.contains("message-option")) {
+            const msgDiv = e.target.closest("[data-message-id]");
+            const messageId = msgDiv.dataset.messageId;
+            console.log("Clicked message:", messageId);
+
+            menu.style.left = e.pageX + "px";
+            menu.style.top = e.pageY + "px";
+
+            // Store the message id
+            menu.dataset.messageId = messageId;
+
+            // Show the menu
+            menu.classList.remove("hidden");
+        }
+    });
+
+    menu.addEventListener("click", (e) => {
+        const action = e.target.dataset.action;
+        const messageId = menu.dataset.messageId;
+
+        if (action === "edit") {
+            console.log("Edit message:", messageId);
+            // Your edit function here
+        }
+
+        if (action === "delete") {
+            console.log("Delete message:", messageId);
+            // Your delete function here
+        }
+
+        // Hide menu after click
+        menu.classList.add("hidden");
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!menu.contains(e.target) && !e.target.classList.contains("message-option")) {
+            menu.classList.add("hidden");
+        }
+    });
 
     sendButton.addEventListener("click", () => {
         const message = inputBox.value.trim();

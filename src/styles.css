@@ -170,6 +170,31 @@ main{
     position: relative;
 }
 
+.message-menu {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    font-size: 12px;
+    border-radius: 6px;
+    box-shadow: 0 0 4px rgba(0,0,0,0.2);
+    padding: 5px 0;
+    z-index: 999;
+}
+
+.message-menu.hidden {
+    display: none;
+}
+
+.menu-item {
+    padding: 6px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.menu-item:hover {
+    background: #f0f0f0;
+}
+
 .chat-header{
     display: flex;
     font-size: 8px;
