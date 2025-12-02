@@ -98,7 +98,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     menu.addEventListener("click", (e) => {
         const action = e.target.dataset.action;
         const messageId = menu.dataset.messageId;
-
+        const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+        const chat = chatCache[recipient];
+        console.log(chat);
+        const idx = chat.findIndex(m => m.message_id == messageId);
+        console.log(msgDiv);
+        console.log(idx);
         if (action === "edit") {
             console.log("Edit message:", messageId);
             // Your edit function here
@@ -106,7 +111,32 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (action === "delete") {
             console.log("Delete message:", messageId);
-            // Your delete function here
+            fetch(`http://localhost:4000/api/chat`, {
+                method: "PATCH",
+                credentials: 'include',
+                body: JSON.stringify({
+                    target: recipient,
+                    messageId: messageId,
+                }),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error("Failed to delete message");
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    console.log("Message deleted:", data);
+                    if (msgDiv) msgDiv.remove();
+                    if (idx != -1) chat.splice(idx, 1);
+                })
+                .catch(err => {
+                    console.error("Error deleting message:", err);
+                    alert("Failed to delete message. Please try again.");
+                });
         }
 
         // Hide menu after click
