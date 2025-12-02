@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", async () => {
     // TODO:
-    // - Split message into send & received
-    // - Fetch message from non contact
+    // - Avoid refetching chat from contact
+    // - Check if user is online/typing etc
     async function fetchMe() {
         const res = await fetch("http://localhost:4000/api/user/me", {
             method: "GET",
@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     console.log("Logged in as", username);
 
-    const socket = new WebSocket(`ws://localhost:8080/${username}`);
+    const socket = new WebSocket(`ws://localhost:8080`);
     const chatContainer = document.querySelector(".chat");
     const inputBox = document.querySelector(".text-box");
     const sendButton = document.querySelector(".send-button");
@@ -32,9 +32,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const contactBox = document.querySelector(".contact-box");
     const logoutButton = document.querySelector(".logout-button");
     const deleteButton = document.querySelector(".delete-button");
-    // TODO:
-    // - fix chat fetching
-    // - implement more secure shit
     let recipient = "";
     let fetchedMessages = [];
 
