@@ -206,7 +206,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     function formatTimestamp(ts) {
         const date = new Date(ts);
 
-        return date.toLocaleString("en-US", {
+        return date.toLocaleString("en-GB", {
             year: "numeric",
             month: "short",
             day: "numeric",
