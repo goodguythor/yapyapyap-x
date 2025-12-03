@@ -200,8 +200,7 @@ server.on('connection', async (ws, req) => {
                     set deleted = true
                     where (message_id = $1)
                     and (sender_id = $2)
-                    and (recipient_id = $3)
-                    returning message_id`,
+                    and (recipient_id = $3)`,
                     [messageId, ws.userId, recipientId]
                 );
 
@@ -225,7 +224,52 @@ server.on('connection', async (ws, req) => {
             }
         }
         else if (action === 'edit') {
+            const messageId = parsed.messageId;
+            const message = parsed.message;
+            const target = parsed.target;
 
+            if (!messageId || !message || !target) {
+                ws.send(JSON.stringify({ error: "Missing fields" }));
+                return;
+            }
+
+            try {
+                const recipientId = await getUserId(target);
+
+                if (!recipientId) {
+                    ws.send(JSON.stringify({ error: "Recipient not found" }));
+                    return;
+                }
+
+                await db.query(
+                    `update messages
+                    set message = $1
+                    where (message_id = $2)
+                    and (sender_id = $3)
+                    and (recipient_id = $4)`,
+                    [message, messageId, ws.userId, recipientId]
+                );
+
+                ws.send(JSON.stringify({
+                    action: 'edit',
+                    message_id: messageId,
+                    target: target,
+                    message: message,
+                }));
+
+                const targetSocket = clients.get(recipientId);
+                if (targetSocket) {
+                    targetSocket.send(JSON.stringify({
+                        action: 'edit',
+                        message_id: messageId,
+                        target: ws.username,
+                        message: message,
+                    }));
+                }
+            } catch (err) {
+                console.error("DB Error:", err);
+                ws.send(JSON.stringify({ error: "Database error" }));
+            }
         }
     });
 

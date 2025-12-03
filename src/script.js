@@ -44,6 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     socket.onmessage = (event) => {
         const msgObj = JSON.parse(event.data);
+        console.log(msgObj);
         const action = msgObj.action;
         const target = msgObj.target;
         const messageId = msgObj.message_id;
@@ -64,6 +65,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             const chat = chatCache[target];
             const idx = chat.findIndex(m => m.message_id == messageId);
             if (idx != -1) chat.splice(idx, 1);
+        }
+        else if (action === 'edit') {
+            const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (msgDiv) {
+                const messageElement = msgDiv.querySelector(".message");
+                messageElement.textContent = msgObj.message;
+            }// update message with msgObj.message
+            chatCache[target][sendButton.dataset.idx].message = msgObj.message;
         }
     };
 
@@ -112,7 +121,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         const messageId = menu.dataset.messageId;
         if (action === "edit") {
             console.log("Edit message:", messageId);
-            // Your edit function here
+            sendButton.dataset.action = 'edit';
+            const chat = chatCache[recipient];
+            const idx = chat.findIndex(m => m.message_id == messageId);
+            if (idx != -1) {
+                inputBox.value = chatCache[recipient][idx].message;
+                sendButton.dataset.idx = idx;
+            }
         }
 
         if (action === "delete") {
@@ -131,22 +146,38 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
-    sendButton.addEventListener("click", () => {
-        const message = inputBox.value.trim();
-        if (message !== "") {
-            inputBox.value = "";
-
-            if (recipient != "") {
-                const payload = {
-                    action: 'insert',
-                    message: message,
-                    target: recipient,
-                };
-                // console.log("Sending message:", payload);
-                socket.send(JSON.stringify(payload));
-            }
+    sendButton.addEventListener("click", (e) => {
+        if (recipient === "") {
+            alert("Select contact first");
+            return;
         }
-        // console.log(message);
+        const message = inputBox.value.trim();
+        if (message === "") {
+            alert("Message cannot empty");
+            return;
+        }
+        const action = e.target.dataset.action;
+        if (action === 'insert') {
+            const payload = {
+                action: 'insert',
+                message: message,
+                target: recipient,
+            };
+            // console.log("Sending message:", payload);
+            socket.send(JSON.stringify(payload));
+        }
+        else if (action === 'edit') {
+            const payload = {
+                action: 'edit',
+                messageId: menu.dataset.messageId,
+                message: message,
+                target: recipient,
+            }
+            socket.send(JSON.stringify(payload));
+            sendButton.dataset.action = 'insert';
+            menu.dataset.messageId = null;
+        }
+        inputBox.value = "";
     });
 
     logoutButton.addEventListener("click", () => {
