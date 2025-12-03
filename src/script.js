@@ -63,8 +63,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
             if (msgDiv) msgDiv.remove();
             const chat = chatCache[target];
-            const idx = chat.findIndex(m => m.message_id == messageId);
-            if (idx != -1) chat.splice(idx, 1);
+            if (chat) {
+                const idx = chat.findIndex(m => m.message_id == messageId);
+                if (idx != -1) chat.splice(idx, 1);
+            }
         }
         else if (action === 'edit') {
             const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
@@ -73,9 +75,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                 messageElement.textContent = msgObj.message;
             }// update message with msgObj.message
             const chat = chatCache[target];
-            const idx = chat.findIndex(m => m.message_id == messageId);
-            if (idx !== -1) {
-                chat[idx].message = msgObj.message;
+            if (chat) {
+                const idx = chat.findIndex(m => m.message_id == messageId);
+                if (idx !== -1) {
+                    chat[idx].message = msgObj.message;
+                }
             }
         }
     };
