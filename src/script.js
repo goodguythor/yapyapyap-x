@@ -110,6 +110,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     chatContainer.addEventListener("click", (e) => {
         if (e.target.classList.contains("message-option")) {
             const msgDiv = e.target.closest("[data-message-id]");
+            if (msgDiv.classList.contains("recipient")) return;
             const messageId = msgDiv.dataset.messageId;
             console.log("Clicked message:", messageId);
 
@@ -134,7 +135,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             const idx = chat.findIndex(m => m.message_id == messageId);
             if (idx != -1) {
                 inputBox.value = chatCache[recipient][idx].message;
-                sendButton.dataset.idx = idx;
             }
         }
 
