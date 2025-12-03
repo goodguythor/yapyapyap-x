@@ -342,8 +342,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             </div>
             <div class="name">${formatTimestamp(timestamp)}</div>
             <hr class="name-line">
-            <div class="message">${message}</div>
+            <div class="message"></div>
         `;
+        const messageElement = msgDiv.querySelector(".message");
+        messageElement.textContent = message;
 
         chatContainer.appendChild(msgDiv);
         chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -360,8 +362,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             </div>
             <div class="name">${formatTimestamp(timestamp)}</div>
             <hr class="name-line">
-            <div class="message">${message}</div>
+            <div class="message"></div>
         `;
+        const messageElement = msgDiv.querySelector(".message");
+        messageElement.textContent = message;
         chatContainer.appendChild(msgDiv);
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
