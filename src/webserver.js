@@ -355,55 +355,8 @@ const server = http.createServer(async (req, res) => {
                 return res.end(JSON.stringify({ error: err }));
             }
         }
-        else if (method == 'PATCH') {
-            const senderId = await getUserIdFromToken(req);
-
-            if (!senderId) {
-                res.writeHead(400);
-                return res.end(JSON.stringify({ error: "Invalid Session" }));
-            }
-
-            const body = await getRequestBody(req);
-            const { target, messageId } = body;
-
-            if (!target) {
-                res.writeHead(400);
-                return res.end(JSON.stringify({ error: "Target username is missing" }));
-            }
-
-
-            if (!messageId) {
-                res.writeHead(400);
-                return res.end(JSON.stringify({ error: "Message ID not found" }));
-            }
-
-            const targetId = await getUserId(target);
-
-            if (!targetId) {
-                res.writeHead(400);
-                return res.end(JSON.stringify({ error: "User not found" }));
-            }
-
-            try {
-                await db.query(
-                    `update messages
-                    set deleted = true
-                    where (message_id = $1)
-                    and (sender_id = $2)
-                    and (recipient_id = $3)`,
-                    [messageId, senderId, targetId]
-                );
-
-                res.writeHead(200);
-                return res.end(JSON.stringify({ status: "Delete successful" }));
-            }
-            catch (err) {
-                res.writeHead(500);
-                return res.end(JSON.stringify({ error: err }));
-            }
-        }
         else {
-            res.writeHead(405, { 'Allow': 'GET, PATCH' });
+            res.writeHead(405, { 'Allow': 'GET' });
             return res.end(JSON.stringify({ error: 'Method not allowed' }));
         }
     }
