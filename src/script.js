@@ -183,7 +183,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             socket.send(JSON.stringify(payload));
             sendButton.dataset.action = 'insert';
-            menu.dataset.messageId = null;
+            delete menu.dataset.messageId;
         }
         inputBox.value = "";
     });
