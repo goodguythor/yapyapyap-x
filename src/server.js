@@ -35,6 +35,21 @@ async function connectDB() {
     return client;
 }
 
+async function getUserId(target) {
+    const result = await db.query(
+        `select user_id
+                    from users
+                    where username = $1`,
+        [target]
+    );
+
+    if (result.rows.length === 0) {
+        return null;
+    }
+
+    return result.rows[0].user_id;
+}
+
 (async () => {
     db = await connectDB();
 })();
@@ -111,62 +126,106 @@ server.on('connection', async (ws, req) => {
             return;
         }
 
-        const { message, target } = parsed;
+        const action = parsed.action;
 
-        if (!message || !target) {
-            ws.send(JSON.stringify({ error: "Missing fields" }));
-            return;
-        }
+        if (action === "insert") {
+            const message = parsed.message;
+            const target = parsed.target;
 
-        try {
-            const result = await db.query(
-                `select user_id
-                from users
-                where username = $1`,
-                [target]
-            );
-
-            if (result.rows.length === 0) {
-                ws.send(JSON.stringify({ error: "Recipient not found" }));
+            if (!message || !target) {
+                ws.send(JSON.stringify({ error: "Missing fields" }));
                 return;
             }
 
-            const recipientId = result.rows[0].user_id;
+            try {
+                const recipientId = await getUserId(target);
+                if (!recipientId) {
+                    ws.send(JSON.stringify({ error: "Recipient not found" }));
+                    return;
+                }
 
-            const res = await db.query(
-                `INSERT INTO messages (message, sender_id, recipient_id)
-                 VALUES ($1, $2, $3)
-                returning message_id`,
-                [message, ws.userId, recipientId]
-            );
+                const res = await db.query(
+                    `INSERT INTO messages (message, sender_id, recipient_id)
+                     VALUES ($1, $2, $3)
+                    returning message_id`,
+                    [message, ws.userId, recipientId]
+                );
 
-            const messageId = res.rows[0].message_id;
+                const messageId = res.rows[0].message_id;
 
-            ws.send(JSON.stringify({
-                type: "message",
-                message_id: messageId,
-                sender: ws.username,
-                recipient: target,
-                message,
-                timestamp: Date.now(),
-                sent: true,
-            }));
-
-            const targetSocket = clients.get(recipientId);
-            if (targetSocket) {
-                targetSocket.send(JSON.stringify({
-                    type: "message",
+                ws.send(JSON.stringify({
+                    action: "insert",
                     message_id: messageId,
-                    sender: ws.username,
-                    recipient: target,
+                    target: target,
                     message,
                     timestamp: Date.now(),
-                    sent: false,
+                    sent: true,
                 }));
+
+                const targetSocket = clients.get(recipientId);
+                if (targetSocket) {
+                    targetSocket.send(JSON.stringify({
+                        action: "insert",
+                        message_id: messageId,
+                        target: ws.username,
+                        message,
+                        timestamp: Date.now(),
+                        sent: false,
+                    }));
+                }
+            } catch (err) {
+                console.error("DB Error:", err);
+                ws.send(JSON.stringify({ error: "Database error" }));
             }
-        } catch (err) {
-            console.error("DB Error:", err);
-            ws.send(JSON.stringify({ error: "Database error" }));
+        }
+        else if (action === 'delete') {
+            const messageId = parsed.messageId;
+            const target = parsed.target;
+
+            if (!messageId || !target) {
+                ws.send(JSON.stringify({ error: "Missing fields" }));
+                return;
+            }
+
+            try {
+                const recipientId = await getUserId(target);
+
+                if (!recipientId) {
+                    ws.send(JSON.stringify({ error: "Recipient not found" }));
+                    return;
+                }
+
+                await db.query(
+                    `update messages
+                    set deleted = true
+                    where (message_id = $1)
+                    and (sender_id = $2)
+                    and (recipient_id = $3)
+                    returning message_id`,
+                    [messageId, ws.userId, recipientId]
+                );
+
+                ws.send(JSON.stringify({
+                    action: 'delete',
+                    message_id: messageId,
+                    target: target,
+                }));
+
+                const targetSocket = clients.get(recipientId);
+                if (targetSocket) {
+                    targetSocket.send(JSON.stringify({
+                        action: 'delete',
+                        message_id: messageId,
+                        target: ws.username,
+                    }));
+                }
+            } catch (err) {
+                console.error("DB Error:", err);
+                ws.send(JSON.stringify({ error: "Database error" }));
+            }
+        }
+        else if (action === 'edit') {
+
         }
     });
 
