@@ -72,7 +72,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const messageElement = msgDiv.querySelector(".message");
                 messageElement.textContent = msgObj.message;
             }// update message with msgObj.message
-            chatCache[target][sendButton.dataset.idx].message = msgObj.message;
+            const chat = chatCache[target];
+            const idx = chat.findIndex(m => m.message_id == messageId);
+            if (idx !== -1) {
+                chat[idx].message = msgObj.message;
+            }
         }
     };
 
