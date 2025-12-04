@@ -109,6 +109,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     chatContainer.addEventListener("click", (e) => {
         if (e.target.classList.contains("message-option")) {
+            chatContainer.querySelectorAll(".message-container.selected")
+                .forEach(el => {
+                    el.classList.remove("selected");
+                    el.parentElement.querySelector(".unselect").click();
+                });
             const msgDiv = e.target.closest("[data-message-id]");
             const messageId = msgDiv.dataset.messageId;
             console.log("Clicked message:", messageId);
@@ -136,6 +141,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             // Show the menu
             menu.classList.remove("hidden");
         }
+        if (e.target.classList.contains("unselect")) {
+            const msgDiv = e.target.closest("[data-message-id]");
+            msgDiv.querySelector('.unselect').classList.add('hidden');
+            msgDiv.querySelector('.message-container').classList.remove('selected');
+            inputBox.value = "";
+            sendButton.dataset.action = "insert";
+            delete menu.dataset.messageId;
+        }
     });
 
     menu.addEventListener("click", (e) => {
@@ -148,6 +161,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             const idx = chat.findIndex(m => m.message_id == messageId);
             if (idx != -1) {
                 inputBox.value = chatCache[recipient][idx].message;
+            }
+            const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (msgDiv) {
+                msgDiv.querySelector(".message-container").classList.add("selected");
+                msgDiv.querySelector(".unselect").classList.remove("hidden");
             }
         }
 
@@ -352,7 +370,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div class="message-container">
                 <div class="message-header">
                     <button class="message-option">...</button>
-                    <div class="name">You</div> 
+                    <div class="name">You</div>
+                    <button class="unselect hidden">X</button>
                 </div>
                 <div class="name">${formatTimestamp(timestamp)}</div>
                 <hr class="name-line">
@@ -371,10 +390,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         msgDiv.dataset.messageId = messageId;
         msgDiv.classList.add("recipient");
         msgDiv.innerHTML = `
-            <div class="messsage-container">
+            <div class="message-container">
                 <div class="message-header">
                     <button class="message-option">...</button>
                     <div class="name">${recipient}</div> 
+                    <button class="unselect hidden">X</button>
                 </div>
                 <div class="name">${formatTimestamp(timestamp)}</div>
                 <hr class="name-line">
