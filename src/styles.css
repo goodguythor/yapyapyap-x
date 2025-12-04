@@ -191,6 +191,10 @@ main{
     white-space: nowrap;
 }
 
+.menu-item.hidden {
+    display: none;
+}
+
 .menu-item:hover {
     background: #f0f0f0;
 }

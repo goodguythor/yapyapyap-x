@@ -110,7 +110,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     chatContainer.addEventListener("click", (e) => {
         if (e.target.classList.contains("message-option")) {
             const msgDiv = e.target.closest("[data-message-id]");
-            if (msgDiv.classList.contains("recipient")) return;
             const messageId = msgDiv.dataset.messageId;
             console.log("Clicked message:", messageId);
 
@@ -119,6 +118,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             // Store the message id
             menu.dataset.messageId = messageId;
+
+            const editBtn = menu.querySelector("[data-action='edit']");
+            const deleteBtn = menu.querySelector("[data-action='delete']");
+            const replyBtn = menu.querySelector("[data-action='reply']");
+            const isRecipient = msgDiv.classList.contains("recipient");
+
+            if (isRecipient) {
+                editBtn.classList.add("hidden");
+                deleteBtn.classList.add("hidden");
+            }
+            else {
+                editBtn.classList.remove("hidden")
+                deleteBtn.classList.remove("hidden");
+            }
 
             // Show the menu
             menu.classList.remove("hidden");
