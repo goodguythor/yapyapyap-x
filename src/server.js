@@ -178,6 +178,60 @@ server.on('connection', async (ws, req) => {
                 ws.send(JSON.stringify({ error: "Database error" }));
             }
         }
+        else if (action === 'reply') {
+            const message = parsed.message;
+            const target = parsed.target;
+            const referralId = parsed.referral_id;
+            console.log(parsed);
+
+            if (!message || !target || !referralId) {
+                ws.send(JSON.stringify({ error: "Missing fields" }));
+                return;
+            }
+
+            try {
+                const recipientId = await getUserId(target);
+                if (!recipientId) {
+                    ws.send(JSON.stringify({ error: "Recipient not found" }));
+                    return;
+                }
+
+                const res = await db.query(
+                    `INSERT INTO messages (message, sender_id, recipient_id, referral_id)
+                     VALUES ($1, $2, $3, $4)
+                    returning message_id`,
+                    [message, ws.userId, recipientId, referralId]
+                );
+
+                const messageId = res.rows[0].message_id;
+
+                ws.send(JSON.stringify({
+                    action: "reply",
+                    message_id: messageId,
+                    referral_id: referralId,
+                    target: target,
+                    message,
+                    timestamp: Date.now(),
+                    sent: true,
+                }));
+
+                const targetSocket = clients.get(recipientId);
+                if (targetSocket) {
+                    targetSocket.send(JSON.stringify({
+                        action: "reply",
+                        message_id: messageId,
+                        referral_id: referralId,
+                        target: ws.username,
+                        message,
+                        timestamp: Date.now(),
+                        sent: false,
+                    }));
+                }
+            } catch (err) {
+                console.error("DB Error:", err);
+                ws.send(JSON.stringify({ error: "Database error" }));
+            }
+        }
         else if (action === 'delete') {
             const messageId = parsed.messageId;
             const target = parsed.target;

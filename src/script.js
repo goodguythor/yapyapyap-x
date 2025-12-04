@@ -58,6 +58,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
 
         }
+        else if (action === 'reply') {
+            if (!chatCache[target]) chatCache[target] = [];
+            console.log(msgObj);
+            chatCache[target].push({ message_id: msgObj.message_id, message: msgObj.message, timestamp: msgObj.timestamp, sent: msgObj.sent, referral_id: msgObj.referral_id });
+            if (msgObj.sent) {
+                appendReplyMessage(msgObj.message_id, msgObj.message, msgObj.timestamp, msgObj.referral_id);
+            } else {
+                appendReceivedReplyMessage(msgObj.message_id, msgObj.message, msgObj.timestamp, msgObj.referral_id);
+            }
+        }
         else if (action === 'delete') {
             const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
             if (msgDiv) msgDiv.remove();
@@ -168,10 +178,19 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         }
 
-        if (action === "delete" && confirm("Are you sure want to delete this message?")) {
+        else if (action === "delete" && confirm("Are you sure want to delete this message?")) {
             console.log("Delete message:", messageId);
             const payload = { action: 'delete', messageId: messageId, target: recipient }
             socket.send(JSON.stringify(payload));
+        }
+
+        else if (action === "reply") {
+            sendButton.dataset.action = "reply";
+            const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (msgDiv) {
+                msgDiv.querySelector(".message-container").classList.add("selected");
+                msgDiv.querySelector(".unselect").classList.remove("hidden");
+            }
         }
 
         // Hide menu after click
@@ -212,6 +231,29 @@ document.addEventListener("DOMContentLoaded", async () => {
                 target: recipient,
             }
             socket.send(JSON.stringify(payload));
+
+            const msgDiv = document.querySelector(`[data-message-id="${menu.dataset.messageId}"]`);
+            if (msgDiv) {
+                msgDiv.querySelector(".message-container").classList.remove("selected");
+                msgDiv.querySelector(".unselect").classList.add("hidden");
+            }
+            sendButton.dataset.action = 'insert';
+            delete menu.dataset.messageId;
+        }
+        else if (action === 'reply') {
+            const payload = {
+                action: 'reply',
+                message: message,
+                target: recipient,
+                referral_id: menu.dataset.messageId,
+            }
+            socket.send(JSON.stringify(payload));
+
+            const msgDiv = document.querySelector(`[data-message-id="${menu.dataset.messageId}"]`);
+            if (msgDiv) {
+                msgDiv.querySelector(".message-container").classList.remove("selected");
+                msgDiv.querySelector(".unselect").classList.add("hidden");
+            }
             sendButton.dataset.action = 'insert';
             delete menu.dataset.messageId;
         }
@@ -409,14 +451,90 @@ document.addEventListener("DOMContentLoaded", async () => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
+    function appendReplyMessage(messageId, message, timestamp, referralId) {
+        const original = document.querySelector(`[data-message-id="${referralId}"]`);
+        let previewHTML = "";
+
+        if (original) {
+            const originalMsg = original.querySelector(".message")?.textContent || "(deleted message)";
+            previewHTML = `
+                <div class="reply-preview">
+                    <div class="name">Replying to:</div>
+                    <hr class="name-line">
+                    <div class="reply-message">${originalMsg}</div>
+                </div>
+            `;
+        }
+
+        const msgDiv = document.createElement("div");
+        msgDiv.dataset.messageId = messageId;
+        msgDiv.classList.add("sender");
+        msgDiv.innerHTML = `
+            <div class="message-container">
+                <div class="message-header">
+                    <button class="message-option">...</button>
+                    <div class="name">You</div>
+                    <button class="unselect hidden">X</button>
+                </div>
+                ${previewHTML}
+                <div class="name">${formatTimestamp(timestamp)}</div>
+                <hr class="name-line">
+                <div class="message"></div>
+            </div>
+        `;
+        const messageElement = msgDiv.querySelector(".message");
+        messageElement.textContent = message;
+
+        chatContainer.appendChild(msgDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function appendReceivedReplyMessage(messageId, message, timestamp, referralId) {
+        const original = document.querySelector(`[data-message-id="${referralId}"]`);
+        let previewHTML = "";
+
+        if (original) {
+            const originalMsg = original.querySelector(".message")?.textContent || "(deleted message)";
+            previewHTML = `
+                <div class="reply-preview">
+                    <div class="name">Replying to:</div>
+                    <hr class="name-line">                    
+                    <div class="reply-message">${originalMsg}</div>
+                </div>
+            `;
+        }
+        const msgDiv = document.createElement("div");
+        msgDiv.dataset.messageId = messageId;
+        msgDiv.classList.add("recipient");
+        msgDiv.innerHTML = `
+            <div class="message-container">
+                <div class="message-header">
+                    <button class="message-option">...</button>
+                    <div class="name">${recipient}</div> 
+                    <button class="unselect hidden">X</button>
+                </div>
+                ${previewHTML}
+                <div class="name">${formatTimestamp(timestamp)}</div>
+                <hr class="name-line">
+                <div class="message"></div>
+            </div>
+        `;
+        const messageElement = msgDiv.querySelector(".message");
+        messageElement.textContent = message;
+        chatContainer.appendChild(msgDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
     function renderChat(messages) {
         chatContainer.innerHTML = "";
         messages.forEach(msgObj => {
             // console.log(msgObj);
             if (msgObj.sent) {
-                appendMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
+                if (msgObj.referral_id) appendReplyMessage(msgObj.message_id, msgObj.message, msgObj.timestamp, msgObj.referral_id);
+                else appendMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
             } else {
-                appendReceivedMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
+                if (msgObj.referral_id) appendReceivedReplyMessage(msgObj.message_id, msgObj.message, msgObj.timestamp, msgObj.referral_id);
+                else appendReceivedMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
             }
         });
     }
