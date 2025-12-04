@@ -151,7 +151,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         }
 
-        if (action === "delete") {
+        if (action === "delete" && confirm('Are you sure you want to delete this message?')) {
             console.log("Delete message:", messageId);
             const payload = { action: 'delete', messageId: messageId, target: recipient }
             socket.send(JSON.stringify(payload));
