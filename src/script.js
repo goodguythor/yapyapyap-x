@@ -48,9 +48,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         const target = msgObj.target;
         const messageId = msgObj.message_id;
         if (action === 'insert') {
-            if (!chatCache[target]) chatCache[target] = [];
+            if (!chatCache[target]) chatCache[target] = fetchChatHistory(target);
             console.log(msgObj);
             chatCache[target].push({ message_id: msgObj.message_id, message: msgObj.message, timestamp: msgObj.timestamp, sent: msgObj.sent });
+            if (target != recipient) return;
             if (msgObj.sent) {
                 appendMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
             } else {
@@ -59,9 +60,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         }
         else if (action === 'reply') {
-            if (!chatCache[target]) chatCache[target] = [];
+            if (!chatCache[target]) chatCache[target] = fetchChatHistory(target);
             console.log(msgObj);
             chatCache[target].push({ message_id: msgObj.message_id, message: msgObj.message, timestamp: msgObj.timestamp, sent: msgObj.sent, referral_id: msgObj.referral_id });
+            if (target != recipient) return;
             if (msgObj.sent) {
                 appendReplyMessage(msgObj.message_id, msgObj.message, msgObj.timestamp, msgObj.referral_id);
             } else {
@@ -556,7 +558,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             .then(data => {
                 console.log(data);
                 chatCache[target] = data;
-                renderChat(data);
+                if (target == recipient) renderChat(data);
             })
             .catch(err => console.error("Failed to fetch chat:", err));
     }
