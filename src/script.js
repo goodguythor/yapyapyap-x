@@ -1,6 +1,5 @@
 document.addEventListener("DOMContentLoaded", async () => {
     // TODO:
-    // - Add feature to edit & delete message
     // - Add feature to reply message
     // - Check if user is online/typing etc
     async function fetchMe() {
@@ -350,6 +349,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         button.dataset.isContact = isContact ? "true" : "false";
 
         button.addEventListener("click", () => {
+            inputBox.value = "";
+            sendButton.dataset.action = "insert";
+            delete menu.dataset.messageId;
             recipient = contactName;
             contactNameDisplay.textContent = recipient;
             chatContainer.innerHTML = "";
