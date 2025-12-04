@@ -151,7 +151,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         }
 
-        if (action === "delete" && confirm('Are you sure you want to delete this message?')) {
+        if (action === "delete" && confirm("Are you sure want to delete this message?")) {
             console.log("Delete message:", messageId);
             const payload = { action: 'delete', messageId: messageId, target: recipient }
             socket.send(JSON.stringify(payload));
@@ -349,13 +349,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         msgDiv.dataset.messageId = messageId;
         msgDiv.classList.add("sender");
         msgDiv.innerHTML = `
-            <div class="message-header">
-                <button class="message-option">...</button>
-                <div class="name">You</div> 
+            <div class="message-container">
+                <div class="message-header">
+                    <button class="message-option">...</button>
+                    <div class="name">You</div> 
+                </div>
+                <div class="name">${formatTimestamp(timestamp)}</div>
+                <hr class="name-line">
+                <div class="message"></div>
             </div>
-            <div class="name">${formatTimestamp(timestamp)}</div>
-            <hr class="name-line">
-            <div class="message"></div>
         `;
         const messageElement = msgDiv.querySelector(".message");
         messageElement.textContent = message;
@@ -369,13 +371,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         msgDiv.dataset.messageId = messageId;
         msgDiv.classList.add("recipient");
         msgDiv.innerHTML = `
-            <div class="message-header">
-                <button class="message-option">...</button>
-                <div class="name">${recipient}</div> 
+            <div class="messsage-container">
+                <div class="message-header">
+                    <button class="message-option">...</button>
+                    <div class="name">${recipient}</div> 
+                </div>
+                <div class="name">${formatTimestamp(timestamp)}</div>
+                <hr class="name-line">
+                <div class="message"></div>
             </div>
-            <div class="name">${formatTimestamp(timestamp)}</div>
-            <hr class="name-line">
-            <div class="message"></div>
         `;
         const messageElement = msgDiv.querySelector(".message");
         messageElement.textContent = message;
