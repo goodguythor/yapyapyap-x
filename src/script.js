@@ -123,7 +123,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             chatContainer.querySelectorAll(".selected")
                 .forEach(el => {
                     el.classList.remove("selected");
-                    el.parentElement.querySelector(".unselect").click();
+                    el.querySelector(".unselect").click();
                 });
             const msgDiv = e.target.closest("[data-message-id]");
             const messageId = msgDiv.dataset.messageId;
