@@ -105,7 +105,7 @@ main{
     gap: 10px;
 }
 
-.recipient, .sender{
+.message-container{
     border: 1px solid black;
     border-radius: 5px;
     padding: 2px;
@@ -122,13 +122,13 @@ main{
     margin-bottom: 10px;   
 }
 
-.recipient{
+.message-container.recipient{
     align-self: flex-start;
     background-color: #fce4ec;
     margin-left: 10px;
 }
 
-.sender{
+.message-container.sender{
     align-self: flex-end;
     background-color: #e0ecfa;
     margin-right: 10px; 
@@ -225,13 +225,12 @@ main{
     background-color: transparent;
 }
 
-.message-container{
-    
+.message-container.recipient.selected{
+    transform: translateX(50px); 
 }
 
-.message-container.selected{
-    width: 100px;
-    transform: skew(-20deg);
+.message-container.sender.selected{
+    transform: translateX(-50px);
 }
 
 .message-box{
