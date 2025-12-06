@@ -137,7 +137,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             const editBtn = menu.querySelector("[data-action='edit']");
             const deleteBtn = menu.querySelector("[data-action='delete']");
-            const replyBtn = menu.querySelector("[data-action='reply']");
             const isRecipient = msgDiv.classList.contains("recipient");
 
             if (isRecipient) {
@@ -149,8 +148,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                 deleteBtn.classList.remove("hidden");
             }
 
-            // Show the menu
             menu.classList.remove("hidden");
+        }
+        const previewBtn = e.target.closest(".reply-preview");
+        if (previewBtn) {
+            console.log("reff woy");
+            const refId = previewBtn.dataset.referralId;
+            const target = document.querySelector(`[data-message-id="${refId}"]`);
+            if (!target) return;
+
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
         }
         if (e.target.classList.contains("unselect")) {
             const msgDiv = e.target.closest("[data-message-id]");
@@ -462,11 +469,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (original) {
             const originalMsg = original.querySelector(".message")?.textContent || "(deleted message)";
             previewHTML = `
-                <div class="reply-preview">
+                <button class="reply-preview" data-referral-id="${referralId}">
                     <div class="name">Replying to:</div>
                     <hr class="name-line">
                     <div class="reply-message">${originalMsg}</div>
-                </div>
+                </button>
             `;
         }
 
@@ -498,11 +505,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (original) {
             const originalMsg = original.querySelector(".message")?.textContent || "(deleted message)";
             previewHTML = `
-                <div class="reply-preview">
+                <button class="reply-preview" data-referral-id="${referralId}">
                     <div class="name">Replying to:</div>
                     <hr class="name-line">                    
                     <div class="reply-message">${originalMsg}</div>
-                </div>
+                </button>
             `;
         }
         const msgDiv = document.createElement("div");

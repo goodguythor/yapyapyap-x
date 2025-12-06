@@ -254,6 +254,13 @@ main{
     border-radius: 5px;
 }
 
+.reply-preview{
+    background: white;
+    border: 1px solid black;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
 .send-button{
     height: 50px;
     font-size: 16px;
