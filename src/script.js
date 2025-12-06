@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", async () => {
     // TODO:
-    // - Add feature to reply message
-    // - Check if user is online/typing etc
+    // - Implement E2EE on message
     async function fetchMe() {
         const res = await fetch("http://localhost:4000/api/user/me", {
             method: "GET",
@@ -48,6 +47,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const target = msgObj.target;
         const messageId = msgObj.message_id;
         if (action === 'insert') {
+            if (!contactExists(target)) createContactButton(target, false);
             if (!chatCache[target]) chatCache[target] = fetchChatHistory(target);
             console.log(msgObj);
             chatCache[target].push({ message_id: msgObj.message_id, message: msgObj.message, timestamp: msgObj.timestamp, sent: msgObj.sent });
@@ -384,6 +384,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             hour: "2-digit",
             minute: "2-digit"
         });
+    }
+
+    function contactExists(name) {
+        return [...document.querySelectorAll(".contact-button")]
+            .some(btn => btn.textContent === name);
     }
 
     function createContactButton(contactName, isContact) {
