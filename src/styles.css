@@ -300,3 +300,12 @@ footer {
     text-align: center;
     margin-bottom: 10px;
 }
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: gray;
+    display: inline-block;
+    margin-left: 5px;
+}

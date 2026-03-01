@@ -101,6 +101,13 @@ server.on('connection', async (ws, req) => {
 
         console.log("Authenticated user:", userId, username);
 
+        for (const [id, socket] of clients) {
+            if (id !== userId) {
+                console.log(ws.username);
+                socket.send(JSON.stringify({ action: "status", username: ws.username, online: true }));
+            }
+        }
+
     }
     catch (err) {
         console.error("Session validation error:", err);
@@ -277,6 +284,20 @@ server.on('connection', async (ws, req) => {
                 ws.send(JSON.stringify({ error: "Database error" }));
             }
         }
+        else if (action === 'getStatus') {
+            const targets = parsed.targets; // array of usernames
+            if (!targets || !Array.isArray(targets)) return;
+
+            for (const targetUsername of targets) {
+                const targetId = await getUserId(targetUsername);
+                const isOnline = targetId && clients.has(targetId);
+                ws.send(JSON.stringify({
+                    action: 'status',
+                    username: targetUsername,
+                    online: isOnline,
+                }));
+            }
+        }
         else if (action === 'edit') {
             const messageId = parsed.messageId;
             const message = parsed.message;
@@ -329,6 +350,11 @@ server.on('connection', async (ws, req) => {
 
     ws.on('close', () => {
         clients.delete(ws.userId);
+
+        for (const [_, socket] of clients) {
+            socket.send(JSON.stringify({ action: "status", username: ws.username, online: false }));
+        }
+
         console.log("Client disconnected");
     });
 });

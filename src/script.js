@@ -93,6 +93,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
             }
         }
+        else if (action === "status") {
+            const contactBtn = document.querySelector(`[data-username="${msgObj.username}"]`);
+            if (contactBtn) {
+                console.log("good");
+                const dot = contactBtn.querySelector('.status-dot');
+                if (dot) dot.style.background = msgObj.online ? 'green' : 'gray';
+            }
+        }
     };
 
     socket.onclose = () => {
@@ -115,6 +123,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             data.forEach(contact => {
                 createContactButton(contact.username, contact.contact);
             });
+
+            const usernames = data.map(c => c.username);
+            if (usernames.length > 0) {
+                socket.send(JSON.stringify({ action: 'getStatus', targets: usernames }));
+            }
         })
         .catch(err => console.error("Failed to fetch contacts:", err));
 
@@ -301,6 +314,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     console.log("Contact added:", data);
                     createContactButton(newContact, true);
                     contactBox.value = ""; // Clear input box   
+                    socket.send(JSON.stringify({ action: 'getStatus', targets: [newContact] }));
                 })
                 .catch(err => {
                     console.error("Error adding contact:", err);
@@ -337,7 +351,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     })
                     .then(data => {
                         console.log("Contact deleted:", data);
-                        const contactButton = [...document.querySelectorAll('.contact-button')].find(button => button.textContent === recipient);
+                        const contactButton = document.querySelector(`.contact-button[data-username="${recipient}"]`);
                         if (contactButton) {
                             contactButton.dataset.isContact = "false";
                             deleteButton.textContent = "Add Contact";
@@ -394,16 +408,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function contactExists(name) {
-        return [...document.querySelectorAll(".contact-button")]
-            .some(btn => btn.textContent === name);
+        return !!document.querySelector(`.contact-button[data-username="${name}"]`);
     }
 
     function createContactButton(contactName, isContact) {
         const button = document.createElement("button");
-        button.textContent = contactName;
         button.classList.add("contact-button");
 
         button.dataset.isContact = isContact ? "true" : "false";
+
+        button.dataset.username = contactName; // <-- add this
+
+        // Add text + dot separately so textContent queries still work
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = contactName;
+        const dot = document.createElement("span");
+        dot.classList.add("status-dot");
+
+        button.appendChild(nameSpan);
+        button.appendChild(dot);
 
         button.addEventListener("click", () => {
             inputBox.value = "";
