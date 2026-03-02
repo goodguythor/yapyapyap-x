@@ -309,3 +309,11 @@ footer {
     display: inline-block;
     margin-left: 5px;
 }
+
+.typing-indicator {
+    font-size: 11px;
+    color: gray;
+    font-style: italic;
+    padding-left: 10px;
+    min-height: 16px;
+}

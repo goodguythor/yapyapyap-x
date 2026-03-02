@@ -32,9 +32,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const logoutButton = document.querySelector(".logout-button");
     const deleteButton = document.querySelector(".delete-button");
     const menu = document.querySelector(".message-menu");
+    const typingIndicator = document.querySelector(".typing-indicator");
 
     let recipient = "";
     let chatCache = {};
+    let typingTimeout = null;
 
     socket.onopen = () => {
         console.log("Connected to WebSocket as", username);
@@ -99,6 +101,23 @@ document.addEventListener("DOMContentLoaded", async () => {
                 console.log("good");
                 const dot = contactBtn.querySelector('.status-dot');
                 if (dot) dot.style.background = msgObj.online ? 'green' : 'gray';
+            }
+        }
+        else if (action === 'typing') {
+            if (msgObj.username === recipient) {
+                if (msgObj.isTyping) {
+                    typingIndicator.textContent = `${msgObj.username} is typing...`;
+                    typingIndicator.classList.remove("hidden");
+                } else {
+                    typingIndicator.textContent = "";
+                    typingIndicator.classList.add("hidden");
+                }
+            }
+
+            const contactBtn = document.querySelector(`.contact-button[data-username="${msgObj.username}"]`);
+            if (contactBtn) {
+                const nameSpan = contactBtn.querySelector("span");
+                nameSpan.textContent = msgObj.isTyping ? `${msgObj.username} is typing` : msgObj.username;
             }
         }
     };
@@ -180,6 +199,17 @@ document.addEventListener("DOMContentLoaded", async () => {
             sendButton.dataset.action = "insert";
             delete menu.dataset.messageId;
         }
+    });
+
+    inputBox.addEventListener("input", () => {
+        if (recipient === "") return;
+
+        socket.send(JSON.stringify({ action: 'typing', target: recipient, isTyping: true }));
+
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            socket.send(JSON.stringify({ action: 'typing', target: recipient, isTyping: false }));
+        }, 3000); // stops typing signal 1.5s after last keystroke
     });
 
     menu.addEventListener("click", (e) => {
@@ -435,6 +465,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             recipient = contactName;
             contactNameDisplay.textContent = recipient;
             chatContainer.innerHTML = "";
+            //const nameSpan = button.querySelector("span");
+            //nameSpan.textContent = contactName;
+            typingIndicator.textContent = "";
+            typingIndicator.classList.add("hidden");
 
             if (button.dataset.isContact === "false") deleteButton.textContent = "Add Contact";
             else deleteButton.textContent = "Delete Contact";

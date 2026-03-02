@@ -239,6 +239,22 @@ server.on('connection', async (ws, req) => {
                 ws.send(JSON.stringify({ error: "Database error" }));
             }
         }
+        else if (action === 'typing') {
+            const target = parsed.target;
+            if (!target) return;
+
+            const recipientId = await getUserId(target);
+            if (!recipientId) return;
+
+            const targetSocket = clients.get(recipientId);
+            if (targetSocket) {
+                targetSocket.send(JSON.stringify({
+                    action: 'typing',
+                    username: ws.username,
+                    isTyping: parsed.isTyping,
+                }));
+            }
+        }
         else if (action === 'delete') {
             const messageId = parsed.messageId;
             const target = parsed.target;
