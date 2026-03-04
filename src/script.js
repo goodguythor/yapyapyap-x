@@ -313,10 +313,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         inputBox.value = "";
     });
 
+    function redirectToLogin() {
+        socket.close();
+        window.location.href = "./login.html";
+    }
+
     logoutButton.addEventListener("click", () => {
         if (confirm("Are you sure you want to log out?")) {
-            socket.close();
-            window.location.href = "./login.html"; // Redirect to login page
+            fetch("http://localhost:4000/api/user/logout", {
+                method: "POST",
+                credentials: "include"
+            }).finally(() => redirectToLogin());
         }
     });
 

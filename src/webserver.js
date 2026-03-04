@@ -138,6 +138,18 @@ const server = http.createServer(async (req, res) => {
         res.end();
         return;
     }
+    else if (pathname == "/api/user/logout") {
+        if (method == 'POST') {
+            const cookies = parseCookies(req);
+            const token = cookies.session_token;
+            if (token) {
+                await db.query(`DELETE FROM sessions WHERE token = $1`, [token]);
+            }
+            setCookie(res, 'session_token', '', { httpOnly: true, maxAge: 0, path: '/' });
+            res.writeHead(200);
+            return res.end(JSON.stringify({ status: "Logged out" }));
+        }
+    }
     else if (pathname == "/api/user/register") {
         if (method == 'POST') {
             try {
