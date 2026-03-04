@@ -56,7 +56,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById('login-form').addEventListener('submit', (e) => {
         e.preventDefault();
-        loginButton.click();
     });
 
 

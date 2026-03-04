@@ -13,6 +13,7 @@ const clients = new Map();
 let db = null;
 
 function getCookie(name, cookieHeader) {
+    if (!cookieHeader) return null;
     const cookies = cookieHeader?.split(";").map(c => c.trim());
     for (let c of cookies) {
         const [key, value] = c.split("=");
