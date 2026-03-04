@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // TODO:
     // - Implement E2EE on message
 
-    const socket = new WebSocket(`ws://localhost:8080`);
+    let socket;
 
     async function forceFetch(url, options = {}) {
         const res = await fetch(url, { credentials: "include", ...options });
@@ -47,107 +47,124 @@ document.addEventListener("DOMContentLoaded", async () => {
     const deleteButton = document.querySelector(".delete-button");
     const menu = document.querySelector(".message-menu");
     const typingIndicator = document.querySelector(".typing-indicator");
+    const reconnectBanner = document.querySelector(".reconnect-banner");
 
     let recipient = "";
     let chatCache = {};
     let typingTimeout = null;
 
-    socket.onopen = () => {
-        console.log("Connected to WebSocket as", username);
-    };
+    function connectWebSocket() {
+        socket = new WebSocket(`ws://localhost:8080`);
 
-    socket.onmessage = (event) => {
-        const msgObj = JSON.parse(event.data);
-        console.log(msgObj);
-        const action = msgObj.action;
-        const target = msgObj.target;
-        const messageId = msgObj.message_id;
-        if (action === 'insert') {
-            if (!contactExists(target)) createContactButton(target, false);
-            if (!chatCache[target]) chatCache[target] = fetchChatHistory(target);
-            console.log(msgObj);
-            chatCache[target].push({ message_id: msgObj.message_id, message: msgObj.message, timestamp: msgObj.timestamp, sent: msgObj.sent });
-            if (target != recipient) return;
-            if (msgObj.sent) {
-                appendMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
-            } else {
-                appendReceivedMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
-            }
+        socket.onopen = () => {
+            console.log("Connected to WebSocket as", username);
 
-        }
-        else if (action === 'reply') {
-            if (!chatCache[target]) chatCache[target] = fetchChatHistory(target);
+            reconnectBanner.classList.add("hidden");
+
+            const usernames = [...document.querySelectorAll(".contact-button")]
+                .map(btn => btn.dataset.username);
+            if (usernames.length > 0) {
+                socket.send(JSON.stringify({ action: 'getStatus', targets: usernames }));
+            }
+        };
+
+        socket.onmessage = (event) => {
+            const msgObj = JSON.parse(event.data);
             console.log(msgObj);
-            chatCache[target].push({ message_id: msgObj.message_id, message: msgObj.message, timestamp: msgObj.timestamp, sent: msgObj.sent, referral_id: msgObj.referral_id });
-            if (target != recipient) return;
-            if (msgObj.sent) {
-                appendReplyMessage(msgObj.message_id, msgObj.message, msgObj.timestamp, msgObj.referral_id);
-            } else {
-                appendReceivedReplyMessage(msgObj.message_id, msgObj.message, msgObj.timestamp, msgObj.referral_id);
-            }
-        }
-        else if (action === 'delete') {
-            const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
-            if (msgDiv) msgDiv.remove();
-            const chat = chatCache[target];
-            if (chat) {
-                const idx = chat.findIndex(m => m.message_id == messageId);
-                if (idx != -1) chat.splice(idx, 1);
-            }
-        }
-        else if (action === 'edit') {
-            const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
-            if (msgDiv) {
-                const messageElement = msgDiv.querySelector(".message");
-                messageElement.textContent = msgObj.message;
-            }// update message with msgObj.message
-            const chat = chatCache[target];
-            if (chat) {
-                const idx = chat.findIndex(m => m.message_id == messageId);
-                if (idx !== -1) {
-                    chat[idx].message = msgObj.message;
-                }
-            }
-        }
-        else if (action === "status") {
-            const contactBtn = document.querySelector(`[data-username="${msgObj.username}"]`);
-            if (contactBtn) {
-                console.log("good");
-                const dot = contactBtn.querySelector('.status-dot');
-                if (dot) dot.style.background = msgObj.online ? 'green' : 'gray';
-            }
-        }
-        else if (action === 'typing') {
-            if (msgObj.username === recipient) {
-                if (msgObj.isTyping) {
-                    typingIndicator.textContent = `${msgObj.username} is typing...`;
-                    typingIndicator.classList.remove("hidden");
+            const action = msgObj.action;
+            const target = msgObj.target;
+            const messageId = msgObj.message_id;
+            if (action === 'insert') {
+                if (!contactExists(target)) createContactButton(target, false);
+                if (!chatCache[target]) chatCache[target] = fetchChatHistory(target);
+                console.log(msgObj);
+                chatCache[target].push({ message_id: msgObj.message_id, message: msgObj.message, timestamp: msgObj.timestamp, sent: msgObj.sent });
+                if (target != recipient) return;
+                if (msgObj.sent) {
+                    appendMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
                 } else {
-                    typingIndicator.textContent = "";
-                    typingIndicator.classList.add("hidden");
+                    appendReceivedMessage(msgObj.message_id, msgObj.message, msgObj.timestamp);
+                }
+
+            }
+            else if (action === 'reply') {
+                if (!chatCache[target]) chatCache[target] = fetchChatHistory(target);
+                console.log(msgObj);
+                chatCache[target].push({ message_id: msgObj.message_id, message: msgObj.message, timestamp: msgObj.timestamp, sent: msgObj.sent, referral_id: msgObj.referral_id });
+                if (target != recipient) return;
+                if (msgObj.sent) {
+                    appendReplyMessage(msgObj.message_id, msgObj.message, msgObj.timestamp, msgObj.referral_id);
+                } else {
+                    appendReceivedReplyMessage(msgObj.message_id, msgObj.message, msgObj.timestamp, msgObj.referral_id);
                 }
             }
-
-            const contactBtn = document.querySelector(`.contact-button[data-username="${msgObj.username}"]`);
-            if (contactBtn) {
-                const nameSpan = contactBtn.querySelector("span");
-                nameSpan.textContent = msgObj.isTyping ? `${msgObj.username} is typing` : msgObj.username;
+            else if (action === 'delete') {
+                const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (msgDiv) msgDiv.remove();
+                const chat = chatCache[target];
+                if (chat) {
+                    const idx = chat.findIndex(m => m.message_id == messageId);
+                    if (idx != -1) chat.splice(idx, 1);
+                }
             }
-        }
-    };
+            else if (action === 'edit') {
+                const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (msgDiv) {
+                    const messageElement = msgDiv.querySelector(".message");
+                    messageElement.textContent = msgObj.message;
+                }// update message with msgObj.message
+                const chat = chatCache[target];
+                if (chat) {
+                    const idx = chat.findIndex(m => m.message_id == messageId);
+                    if (idx !== -1) {
+                        chat[idx].message = msgObj.message;
+                    }
+                }
+            }
+            else if (action === "status") {
+                const contactBtn = document.querySelector(`[data-username="${msgObj.username}"]`);
+                if (contactBtn) {
+                    console.log("good");
+                    const dot = contactBtn.querySelector('.status-dot');
+                    if (dot) dot.style.background = msgObj.online ? 'green' : 'gray';
+                }
+            }
+            else if (action === 'typing') {
+                if (msgObj.username === recipient) {
+                    if (msgObj.isTyping) {
+                        typingIndicator.textContent = `${msgObj.username} is typing...`;
+                        typingIndicator.classList.remove("hidden");
+                    } else {
+                        typingIndicator.textContent = "";
+                        typingIndicator.classList.add("hidden");
+                    }
+                }
 
-    socket.onclose = (event) => {
-        console.log("Disconnected from WebSocket");
-        if (event.code === 1000) return;
-        if (event.code === 1008) {
-            redirectToLogin();
-            return;
-        }
-    };
+                const contactBtn = document.querySelector(`.contact-button[data-username="${msgObj.username}"]`);
+                if (contactBtn) {
+                    const nameSpan = contactBtn.querySelector("span");
+                    nameSpan.textContent = msgObj.isTyping ? `${msgObj.username} is typing` : msgObj.username;
+                }
+            }
+        };
 
-    socket.onerror = (err) => {
-        console.error("WebSocket error:", err);
-    };
+        socket.onclose = (event) => {
+            console.log("Disconnected from WebSocket");
+            if (event.code === 1000) return;
+            if (event.code === 1008) {
+                redirectToLogin();
+                return;
+            }
+            reconnectBanner.classList.remove("hidden");
+            setTimeout(connectWebSocket, 10000);
+        };
+
+        socket.onerror = (err) => {
+            console.error("WebSocket error:", err);
+        };
+    }
+
+    connectWebSocket();
 
     forceFetch(
         `http://localhost:4000/api/contact`,

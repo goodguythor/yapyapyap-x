@@ -10,6 +10,18 @@ main{
     align-items: center;
 }
 
+.reconnect-banner {
+    background: #f0a500;
+    color: white;
+    text-align: center;
+    font-size: 13px;
+    padding: 4px;
+}
+
+.reconnect-banner.hidden {
+    display: none;
+}
+
 .chat-box{
     display: flex;
     flex-direction: row;
