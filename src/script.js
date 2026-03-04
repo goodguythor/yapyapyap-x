@@ -1,6 +1,9 @@
 document.addEventListener("DOMContentLoaded", async () => {
     // TODO:
     // - Implement E2EE on message
+
+    const socket = new WebSocket(`ws://localhost:8080`);
+
     async function forceFetch(url, options = {}) {
         const res = await fetch(url, { credentials: "include", ...options });
         if (res.status === 401 || res.status === 400) {
@@ -33,7 +36,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     console.log("Logged in as", username);
 
-    const socket = new WebSocket(`ws://localhost:8080`);
     const chatContainer = document.querySelector(".chat");
     const inputBox = document.querySelector(".text-box");
     const sendButton = document.querySelector(".send-button");
