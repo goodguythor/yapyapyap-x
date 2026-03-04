@@ -328,7 +328,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     function redirectToLogin() {
-        socket.close();
+        if (socket.readyState === WebSocket.OPEN) socket.close();
         window.location.href = "./login.html";
     }
 
