@@ -90,7 +90,7 @@ server.on('connection', async (ws, req) => {
             [userId]
         );
 
-        if (result.rows.length === 0) {
+        if (res.rows.length === 0) {
             ws.send(JSON.stringify({ error: "Invalid user" }));
             ws.close();
             return;
