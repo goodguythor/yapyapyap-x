@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const data = await res.json().catch(() => ({}));
             if (data.error === "Invalid Session") {
                 alert("Please login first");
-                redirectToLogin(1008);
+                redirectToLogin();
                 return null;
             }
         }
@@ -138,7 +138,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.log("Disconnected from WebSocket");
         if (event.code === 1000) return;
         if (event.code === 1008) {
-            redirectToLogin(1008);
+            redirectToLogin();
             return;
         }
     };
@@ -161,7 +161,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             const usernames = data.map(c => c.username);
             if (usernames.length > 0) {
-                socket.send(JSON.stringify({ action: 'getStatus', targets: usernames }));
+                sendWhenReady({ action: 'getStatus', targets: usernames });
             }
         })
         .catch(err => console.error("Failed to fetch contacts:", err));
@@ -329,8 +329,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         inputBox.value = "";
     });
 
-    function redirectToLogin(protocol) {
-        if (socket && socket.readyState === WebSocket.OPEN) socket.close(protocol);
+    function redirectToLogin() {
+        if (socket && socket.readyState === WebSocket.OPEN) socket.close(1000);
         window.location.href = "./login.html";
     }
 
@@ -338,9 +338,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (confirm("Are you sure you want to log out?")) {
             forceFetch("http://localhost:4000/api/user/logout", {
                 method: "POST",
-            }).finally(() => redirectToLogin(1000));
+            }).finally(() => redirectToLogin());
         }
     });
+
+    function sendWhenReady(payload) {
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(payload));
+        } else {
+            socket.addEventListener('open', () => socket.send(JSON.stringify(payload)), { once: true });
+        }
+    }
 
     addButton.addEventListener("click", () => {
         const newContact = contactBox.value.trim();
@@ -365,7 +373,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     console.log("Contact added:", data);
                     createContactButton(newContact, true);
                     contactBox.value = ""; // Clear input box   
-                    socket.send(JSON.stringify({ action: 'getStatus', targets: [newContact] }));
+                    sendWhenReady({ action: 'getStatus', targets: [newContact] });
                 })
                 .catch(err => {
                     console.error("Error adding contact:", err);
