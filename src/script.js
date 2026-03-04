@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (res.status === 401 || res.status === 400) {
             const data = await res.json().catch(() => ({}));
             if (data.error === "Invalid Session") {
+                alert("Please login first");
                 redirectToLogin();
                 return null;
             }
@@ -135,6 +136,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     socket.onclose = () => {
         console.log("Disconnected from WebSocket");
+        if (event.code !== 1000) {
+            redirectToLogin();
+        }
     };
 
     socket.onerror = (err) => {

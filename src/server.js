@@ -62,7 +62,7 @@ server.on('connection', async (ws, req) => {
 
     if (!sessionToken) {
         ws.send(JSON.stringify({ error: "No session token" }));
-        ws.close();
+        ws.close(1008, "Invalid session");
         return;
     }
 
@@ -77,7 +77,7 @@ server.on('connection', async (ws, req) => {
 
         if (result.rows.length === 0) {
             ws.send(JSON.stringify({ error: "Invalid session" }));
-            ws.close();
+            ws.close(1008, "Invalid sessions");
             return;
         }
 
