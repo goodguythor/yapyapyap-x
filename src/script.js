@@ -1,10 +1,21 @@
 document.addEventListener("DOMContentLoaded", async () => {
     // TODO:
     // - Implement E2EE on message
+    async function forceFetch(url, options = {}) {
+        const res = await fetch(url, { credentials: "include", ...options });
+        if (res.status === 401 || res.status === 400) {
+            const data = await res.json().catch(() => ({}));
+            if (data.error === "Invalid Session") {
+                redirectToLogin();
+                return null;
+            }
+        }
+        return res;
+    }
+
     async function fetchMe() {
-        const res = await fetch("http://localhost:4000/api/user/me", {
+        const res = await forceFetch("http://localhost:4000/api/user/me", {
             method: "GET",
-            credentials: "include"
         });
 
         const data = await res.json();
@@ -130,11 +141,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.error("WebSocket error:", err);
     };
 
-    fetch(
+    forceFetch(
         `http://localhost:4000/api/contact`,
         {
-            method: 'GET',
-            credentials: 'include',
+            method: 'GET'
         }
     )
         .then(res => res.json())
@@ -320,9 +330,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     logoutButton.addEventListener("click", () => {
         if (confirm("Are you sure you want to log out?")) {
-            fetch("http://localhost:4000/api/user/logout", {
+            forceFetch("http://localhost:4000/api/user/logout", {
                 method: "POST",
-                credentials: "include"
             }).finally(() => redirectToLogin());
         }
     });
@@ -331,9 +340,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         const newContact = contactBox.value.trim();
         if (newContact === username) alert("Can't add your account into contact");
         else if (newContact !== "") {
-            fetch(`http://localhost:4000/api/contact`, {
+            forceFetch(`http://localhost:4000/api/contact`, {
                 method: "POST",
-                credentials: 'include',
                 body: JSON.stringify({
                     target: newContact
                 }),
@@ -370,9 +378,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         if (deleteButton.textContent === "Delete Contact") {
             if (confirm(`Are you sure you want to delete the contact "${recipient}"?`)) {
-                fetch(`http://localhost:4000/api/contact`, {
+                forceFetch(`http://localhost:4000/api/contact`, {
                     method: "PATCH",
-                    credentials: 'include',
                     headers: {
                         "Content-Type": "application/json"
                     },
@@ -401,9 +408,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         }
         else {
-            fetch(`http://localhost:4000/api/contact`, {
+            forceFetch(`http://localhost:4000/api/contact`, {
                 method: "POST",
-                credentials: 'include',
                 body: JSON.stringify({
                     target: recipient
                 }),
@@ -616,11 +622,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             renderChat(chatCache[target]);
             return;
         }
-        fetch(
+        forceFetch(
             `http://localhost:4000/api/chat?target=${target}`,
             {
                 method: 'GET',
-                credentials: 'include',
             }
         )
             .then(res => res.json())
