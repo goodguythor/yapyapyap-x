@@ -164,13 +164,14 @@ server.on('connection', async (ws, req) => {
                 );
 
                 const messageId = res.rows[0].message_id;
+                const timestamp = Date.now();
 
                 ws.send(JSON.stringify({
                     action: "insert",
                     message_id: messageId,
                     target: target,
                     message,
-                    timestamp: Date.now(),
+                    timestamp: timestamp,
                     sent: true,
                 }));
 
@@ -181,7 +182,7 @@ server.on('connection', async (ws, req) => {
                         message_id: messageId,
                         target: ws.username,
                         message,
-                        timestamp: Date.now(),
+                        timestamp: timestamp,
                         sent: false,
                     }));
                 }
@@ -216,6 +217,7 @@ server.on('connection', async (ws, req) => {
                 );
 
                 const messageId = res.rows[0].message_id;
+                const timestamp = Date.now();
 
                 ws.send(JSON.stringify({
                     action: "reply",
@@ -223,7 +225,7 @@ server.on('connection', async (ws, req) => {
                     referral_id: referralId,
                     target: target,
                     message,
-                    timestamp: Date.now(),
+                    timestamp: timestamp,
                     sent: true,
                 }));
 
@@ -235,7 +237,7 @@ server.on('connection', async (ws, req) => {
                         referral_id: referralId,
                         target: ws.username,
                         message,
-                        timestamp: Date.now(),
+                        timestamp: timestamp,
                         sent: false,
                     }));
                 }
