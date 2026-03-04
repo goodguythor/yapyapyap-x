@@ -54,6 +54,12 @@ document.addEventListener("DOMContentLoaded", () => {
             });
     });
 
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        loginButton.click();
+    });
+
+
     signUpButton.addEventListener('click', () => {
         const username = usernameBox.value.trim();
         const password = passwordBox.value.trim();
