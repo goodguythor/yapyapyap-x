@@ -219,6 +219,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     inputBox.addEventListener("input", () => {
         if (recipient === "") return;
+        if (socket.readyState !== WebSocket.OPEN) return;
 
         socket.send(JSON.stringify({ action: 'typing', target: recipient, isTyping: true }));
 
@@ -277,6 +278,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             alert("Select contact first");
             return;
         }
+
+        if (socket.readyState !== WebSocket.OPEN) { alert("Not connected, please wait..."); return; }
+
         const message = inputBox.value.trim();
         if (message === "") {
             alert("Message cannot empty");
