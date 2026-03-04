@@ -30,9 +30,14 @@ async function connectDB() {
         port: process.env.DB_PORT,
     });
 
-    await client.connect();
-    console.log("Connected to database");
-    return client;
+    try {
+        await client.connect();
+        console.log("Connected to database");
+        return client;
+    } catch (err) {
+        console.error("DB connection error:", err);
+        process.exit(1);
+    }
 }
 
 async function getUserId(target) {
@@ -365,11 +370,11 @@ server.on('connection', async (ws, req) => {
     });
 
     ws.on('close', () => {
-        clients.delete(ws.userId);
-
         for (const [_, socket] of clients) {
             socket.send(JSON.stringify({ action: "status", username: ws.username, online: false }));
         }
+
+        clients.delete(ws.userId);
 
         console.log("Client disconnected");
     });
