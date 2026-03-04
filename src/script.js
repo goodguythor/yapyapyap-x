@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const data = await res.json().catch(() => ({}));
             if (data.error === "Invalid Session") {
                 alert("Please login first");
-                redirectToLogin();
+                redirectToLogin(1008);
                 return null;
             }
         }
@@ -134,10 +134,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     };
 
-    socket.onclose = () => {
+    socket.onclose = (event) => {
         console.log("Disconnected from WebSocket");
-        if (event.code !== 1000) {
-            redirectToLogin();
+        if (event.code === 1000) return;
+        if (event.code === 1008) {
+            redirectToLogin(1008);
+            return;
         }
     };
 
@@ -327,8 +329,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         inputBox.value = "";
     });
 
-    function redirectToLogin() {
-        if (socket && socket.readyState === WebSocket.OPEN) socket.close();
+    function redirectToLogin(protocol) {
+        if (socket && socket.readyState === WebSocket.OPEN) socket.close(protocol);
         window.location.href = "./login.html";
     }
 
@@ -336,7 +338,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (confirm("Are you sure you want to log out?")) {
             forceFetch("http://localhost:4000/api/user/logout", {
                 method: "POST",
-            }).finally(() => redirectToLogin());
+            }).finally(() => redirectToLogin(1000));
         }
     });
 
@@ -429,7 +431,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 })
                 .then(data => {
                     console.log("Contact added:", data);
-                    const contactButton = [...document.querySelectorAll('.contact-button')].find(button => button.textContent === recipient);
+                    const contactButton = document.querySelector(`.contact-button[data-username="${recipient}"]`);
                     if (contactButton) {
                         contactButton.dataset.isContact = "true";
                         deleteButton.textContent = "Delete Contact";
