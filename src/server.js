@@ -150,6 +150,11 @@ server.on('connection', async (ws, req) => {
                 return;
             }
 
+            if (message.length > 2000) {
+                ws.send(JSON.stringify({ error: "Message too long" }));
+                return;
+            }
+
             try {
                 const recipientId = await getUserId(target);
                 if (!recipientId) {
@@ -200,6 +205,11 @@ server.on('connection', async (ws, req) => {
 
             if (!message || !target || !referralId) {
                 ws.send(JSON.stringify({ error: "Missing fields" }));
+                return;
+            }
+
+            if (message.length > 2000) {
+                ws.send(JSON.stringify({ error: "Message too long" }));
                 return;
             }
 

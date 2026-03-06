@@ -305,6 +305,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             alert("Message cannot empty");
             return;
         }
+
+        if (message.length > 2000) {
+            alert("Message cannot be more than 2000 characters");
+            return;
+        }
+
         const action = e.target.dataset.action;
         if (action === 'insert') {
             const payload = {
