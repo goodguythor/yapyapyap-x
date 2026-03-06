@@ -56,6 +56,25 @@ async function getUserId(target) {
     return result.rows[0].user_id;
 }
 
+const RATE_LIMIT = 200;
+
+function isRateLimited(ws) {
+    const now = Date.now();
+
+    if (!ws.rateLimit) {
+        ws.rateLimit = { count: 0, windowStart: now };
+    }
+
+    if (now - ws.rateLimit.windowStart > 60000) {
+        ws.rateLimit.count = 0;
+        ws.rateLimit.windowStart = now;
+    }
+
+    ws.rateLimit.count++;
+
+    return ws.rateLimit.count > RATE_LIMIT;
+}
+
 (async () => {
     db = await connectDB();
 })();
@@ -136,6 +155,11 @@ server.on('connection', async (ws, req) => {
             parsed = JSON.parse(rawData);
         } catch (err) {
             ws.send(JSON.stringify({ error: "Invalid JSON format" }));
+            return;
+        }
+
+        if (isRateLimited(ws)) {
+            ws.send(JSON.stringify({ error: "Rate limit exceeded, slow down" }));
             return;
         }
 

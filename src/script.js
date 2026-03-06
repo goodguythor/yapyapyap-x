@@ -70,6 +70,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         socket.onmessage = (event) => {
             const msgObj = JSON.parse(event.data);
+            if (msgObj.error) {
+                console.warn("Server error:", msgObj.error);
+                if (msgObj.error === "Rate limit exceeded, slow down") {
+                    inputBox.placeholder = "Slow down...";
+                    setTimeout(() => inputBox.placeholder = "Enter your message", 2000);
+                }
+                return;
+            }
+
             console.log(msgObj);
             const action = msgObj.action;
             const target = msgObj.target;
