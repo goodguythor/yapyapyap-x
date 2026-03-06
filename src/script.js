@@ -236,6 +236,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
+    inputBox.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault(); // prevent newline
+            sendButton.click();
+        }
+    });
+
     inputBox.addEventListener("input", () => {
         if (recipient === "") return;
         if (socket.readyState !== WebSocket.OPEN) return;
