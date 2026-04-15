@@ -1,7 +1,7 @@
 const http = require('http');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const { Client } = require('pg');
+const db = require('./db');
 require('dotenv').config();
 
 const port = process.env.PORT;
@@ -9,8 +9,6 @@ const host = process.env.HOST;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-={}\[\]|:;"'<>,.?/~`]).{8,100}$/;
 
 // TODO:
-
-let db = null;
 
 function generateSessionToken() {
     return crypto.randomBytes(32).toString("hex");
@@ -59,26 +57,6 @@ function parseCookies(req) {
     );
 }
 
-async function connectDB() {
-    const client = new Client({
-        user: process.env.DB_USER,
-        host: process.env.DB_HOST,
-        database: process.env.DB_NAME,
-        password: process.env.DB_PASSWORD,
-        port: process.env.DB_PORT,
-    });
-
-    try {
-        await client.connect();
-        console.log('Connected to database');
-        return client;
-    }
-    catch (err) {
-        console.error('DB connection error', err);
-        process.exit(1);
-    }
-}
-
 const server = http.createServer(async (req, res) => {
     const { method, url } = req;
     const parsedUrl = new URL(url, `http://${host}:${port}`);
@@ -88,26 +66,6 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-    async function getUserId(target) {
-        let targetId = null;
-
-        if (!target) {
-            return targetId;
-        }
-
-        const result = await db.query(
-            `select username, user_id 
-            from users
-            where username = $1`,
-            [target]
-        );
-
-        const row = result.rows[0];
-        if (row.username === target) targetId = row.user_id;
-
-        return targetId;
-    }
 
     async function getUserIdFromToken(req) {
         const cookies = parseCookies(req);
@@ -341,7 +299,7 @@ const server = http.createServer(async (req, res) => {
                 return res.end(JSON.stringify({ error: "Target username is missing" }));
             }
 
-            const targetId = await getUserId(target);
+            const targetId = await db.getUserId(target);
 
             if (!targetId) {
                 res.writeHead(400);
@@ -425,7 +383,7 @@ const server = http.createServer(async (req, res) => {
                 return res.end(JSON.stringify({ error: "Target username is missing" }));
             }
 
-            const targetId = await getUserId(target);
+            const targetId = await db.getUserId(target);
 
             if (!targetId) {
                 res.writeHead(400);
@@ -469,7 +427,7 @@ const server = http.createServer(async (req, res) => {
                 return res.end(JSON.stringify({ error: "Target username is missing" }));
             }
 
-            const targetId = await getUserId(target);
+            const targetId = await db.getUserId(target);
 
             if (!targetId) {
                 res.writeHead(400);
@@ -502,8 +460,7 @@ const server = http.createServer(async (req, res) => {
     res.end("yapyapyap");
 });
 
-async function startServer() {
-    db = await connectDB();
+function startServer() {
     server.listen(port, host, () => {
         console.log(`Server running at http://${host}:${port}`);
     });

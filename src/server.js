@@ -3,14 +3,12 @@
 
 const WebSocket = require('ws');
 const server = new WebSocket.Server({ port: 8080 });
-const { Client } = require('pg');
+const db = require('./db');
 require('dotenv').config();
 
 console.log("WebSocket Server running at ws://localhost:8080");
 
 const clients = new Map();
-
-let db = null;
 
 function getCookie(name, cookieHeader) {
     if (!cookieHeader) return null;
@@ -20,40 +18,6 @@ function getCookie(name, cookieHeader) {
         if (key === name) return value;
     }
     return null;
-}
-
-async function connectDB() {
-    const client = new Client({
-        user: process.env.DB_USER,
-        host: process.env.DB_HOST,
-        database: process.env.DB_NAME,
-        password: process.env.DB_PASSWORD,
-        port: process.env.DB_PORT,
-    });
-
-    try {
-        await client.connect();
-        console.log("Connected to database");
-        return client;
-    } catch (err) {
-        console.error("DB connection error:", err);
-        process.exit(1);
-    }
-}
-
-async function getUserId(target) {
-    const result = await db.query(
-        `select user_id
-                    from users
-                    where username = $1`,
-        [target]
-    );
-
-    if (result.rows.length === 0) {
-        return null;
-    }
-
-    return result.rows[0].user_id;
 }
 
 const RATE_LIMIT = 200;
@@ -74,10 +38,6 @@ function isRateLimited(ws) {
 
     return ws.rateLimit.count > RATE_LIMIT;
 }
-
-(async () => {
-    db = await connectDB();
-})();
 
 server.on('connection', async (ws, req) => {
     console.log("New client connected");
@@ -180,7 +140,7 @@ server.on('connection', async (ws, req) => {
             }
 
             try {
-                const recipientId = await getUserId(target);
+                const recipientId = await db.getUserId(target);
                 if (!recipientId) {
                     ws.send(JSON.stringify({ error: "Recipient not found" }));
                     return;
@@ -238,7 +198,7 @@ server.on('connection', async (ws, req) => {
             }
 
             try {
-                const recipientId = await getUserId(target);
+                const recipientId = await db.getUserId(target);
                 if (!recipientId) {
                     ws.send(JSON.stringify({ error: "Recipient not found" }));
                     return;
@@ -285,7 +245,7 @@ server.on('connection', async (ws, req) => {
             const target = parsed.target;
             if (!target) return;
 
-            const recipientId = await getUserId(target);
+            const recipientId = await db.getUserId(target);
             if (!recipientId) return;
 
             const targetSocket = clients.get(recipientId);
@@ -307,7 +267,7 @@ server.on('connection', async (ws, req) => {
             }
 
             try {
-                const recipientId = await getUserId(target);
+                const recipientId = await db.getUserId(target);
 
                 if (!recipientId) {
                     ws.send(JSON.stringify({ error: "Recipient not found" }));
@@ -347,7 +307,7 @@ server.on('connection', async (ws, req) => {
             if (!targets || !Array.isArray(targets)) return;
 
             for (const targetUsername of targets) {
-                const targetId = await getUserId(targetUsername);
+                const targetId = await db.getUserId(targetUsername);
                 const isOnline = targetId && clients.has(targetId);
                 ws.send(JSON.stringify({
                     action: 'status',
@@ -367,7 +327,7 @@ server.on('connection', async (ws, req) => {
             }
 
             try {
-                const recipientId = await getUserId(target);
+                const recipientId = await db.getUserId(target);
 
                 if (!recipientId) {
                     ws.send(JSON.stringify({ error: "Recipient not found" }));
